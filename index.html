@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="技术博客 — 记录学习与思考">
+  <title>reb00t's blog</title>
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- highlight.js dark theme (primary) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" id="hljs-dark">
+  <!-- highlight.js light theme (fallback) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" id="hljs-light" disabled>
+
+  <!-- Fonts: JetBrains Mono for code/headings -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- ====== Navbar ====== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a class="nav-brand" href="#/">
+        <span class="prompt">></span> reb00t<span class="cursor">_</span>
+      </a>
+      <div class="nav-tabs">
+        <a href="#/" class="nav-tab" data-tab="home">首页</a>
+        <a href="#/posts" class="nav-tab" data-tab="posts">文章</a>
+        <a href="#/about" class="nav-tab" data-tab="about">关于</a>
+      </div>
+      <div class="nav-actions">
+        <a href="https://github.com/reb00t" target="_blank" rel="noopener" class="nav-icon" title="GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.604-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12 24 5.37 18.63 0 12 0z"/></svg>
+        </a>
+        <button id="theme-toggle" class="theme-btn" aria-label="切换主题" title="切换主题">☀️</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ====== Two-column layout ====== -->
+  <div class="layout">
+
+    <!-- ====== Main content ====== -->
+    <main class="main-content">
+
+      <!-- Home view -->
+      <section id="home-view" class="view">
+        <div class="hero">
+          <div class="hero-avatar" aria-hidden="true">{ }</div>
+          <div class="hero-line"><span class="hero-prompt">$</span> whoami</div>
+          <h1 class="hero-name">reb00t</h1>
+          <p class="hero-tagline">全栈开发者 · 开源爱好者 · 终身学习者</p>
+          <p class="hero-bio">
+            写代码、折腾工具、记录思考。这里是我的技术自留地。
+          </p>
+
+          <div class="hero-social">
+            <a href="https://github.com/reb00t" target="_blank" rel="noopener" class="social-link" title="GitHub">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.604-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12 24 5.37 18.63 0 12 0z"/></svg>
+              GitHub
+            </a>
+            <a href="mailto:532773898@qq.com" class="social-link" title="Email">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 4-10 8L2 4"/></svg>
+              Email
+            </a>
+            <a href="#" class="social-link" title="RSS">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19 7.38 20 6.18 20C5 20 4 19 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 5.66a9.9 9.9 0 0 1 9.9 9.9h-2.83A7.07 7.07 0 0 0 4 12.93V10.1Z"/></svg>
+              RSS
+            </a>
+          </div>
+
+          <div class="hero-stats">
+            <div class="stat-item" id="stat-posts-wrap">
+              <span class="stat-number" id="stat-posts">0</span>
+              <span class="stat-label">文章</span>
+            </div>
+            <div class="stat-item" id="stat-tags-wrap">
+              <span class="stat-number" id="stat-tags">0</span>
+              <span class="stat-label">标签</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number" id="stat-years">1</span>
+              <span class="stat-label">年</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <h2 class="section-title">// 最近文章</h2>
+          <a href="#/posts" class="section-more">查看全部 →</a>
+        </div>
+        <div id="recent-posts" class="post-list">
+          <!-- JS populated -->
+        </div>
+      </section>
+
+      <!-- Posts list view -->
+      <section id="posts-view" class="view" style="display:none;">
+        <div class="section-header">
+          <h2 class="section-title">// 全部文章</h2>
+          <span class="section-count" id="posts-count"></span>
+        </div>
+        <div id="tag-filter" class="tag-filter">
+          <button class="tag-filter-btn active" data-tag="all">全部</button>
+        </div>
+        <div id="post-list" class="post-list">
+          <!-- JS populated -->
+        </div>
+        <div id="list-loading" class="loading">加载中...</div>
+      </section>
+
+      <!-- Single post view -->
+      <article id="post-view" class="view" style="display:none;">
+        <button id="back-btn" class="back-btn">← 返回</button>
+        <header class="post-header">
+          <h1 id="post-title" class="post-detail-title"></h1>
+          <div class="post-meta">
+            <time id="post-date"></time>
+            <span class="post-reading-time" id="post-reading"></span>
+            <span id="post-tags" class="post-tags"></span>
+          </div>
+        </header>
+        <div id="post-content" class="post-content">
+          <!-- Markdown rendered here -->
+        </div>
+        <div id="post-loading" class="loading">加载中...</div>
+      </article>
+
+      <!-- About view -->
+      <section id="about-view" class="view" style="display:none;">
+        <div class="about-card">
+          <h2 class="section-title">// 关于我</h2>
+          <div class="about-grid">
+            <div class="about-col">
+              <p>
+                一名热爱技术的全栈开发者，专注 <strong>后端架构、云原生、开发者工具</strong> 方向。
+              </p>
+              <p>
+                喜欢用代码解决实际问题，相信「好工具改变效率」。工作之余折腾开源项目、写技术博客、玩数码产品。
+              </p>
+              <p>
+                这个博客用来记录学习过程中的思考和踩坑经验 — 如果能帮到你，那就太好了。
+              </p>
+            </div>
+            <div class="about-col">
+              <h3>// 技能</h3>
+              <div class="skill-cloud">
+                <span class="skill-tag">Go</span>
+                <span class="skill-tag">Python</span>
+                <span class="skill-tag">TypeScript</span>
+                <span class="skill-tag">Rust</span>
+                <span class="skill-tag">Kubernetes</span>
+                <span class="skill-tag">Docker</span>
+                <span class="skill-tag">Linux</span>
+                <span class="skill-tag">Git</span>
+                <span class="skill-tag">React</span>
+                <span class="skill-tag">Next.js</span>
+                <span class="skill-tag">PostgreSQL</span>
+                <span class="skill-tag">Redis</span>
+                <span class="skill-tag">CI/CD</span>
+                <span class="skill-tag">Open Source</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-card">
+          <h3>// 联系我</h3>
+          <p>欢迎通过以下方式找到我：</p>
+          <div class="contact-links">
+            <a href="https://github.com/reb00t" target="_blank" rel="noopener" class="contact-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.604-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12 24 5.37 18.63 0 12 0z"/></svg>
+              GitHub @reb00t
+            </a>
+            <a href="mailto:532773898@qq.com" class="contact-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 4-10 8L2 4"/></svg>
+              532773898@qq.com
+            </a>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ====== Sidebar ====== -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Archive widget -->
+      <div class="widget" id="archive-widget">
+        <h3 class="widget-title">// 归档</h3>
+        <div id="archive-tree" class="archive-tree">
+          <!-- JS populated -->
+        </div>
+      </div>
+
+      <!-- Tags widget -->
+      <div class="widget" id="tags-widget">
+        <h3 class="widget-title">// 标签</h3>
+        <div id="sidebar-tags" class="sidebar-tags">
+          <!-- JS populated -->
+        </div>
+      </div>
+
+      <!-- Recent widget -->
+      <div class="widget">
+        <h3 class="widget-title">// 最近</h3>
+        <ul id="sidebar-recent" class="sidebar-recent">
+          <!-- JS populated -->
+        </ul>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ====== Footer ====== -->
+  <footer class="footer">
+    <p><span class="prompt">$</span> echo "基于 HTML + JS 构建 · 托管于 <a href='https://pages.github.com/' target='_blank' rel='noopener'>GitHub Pages</a>"</p>
+  </footer>
+
+  <!-- marked.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <!-- highlight.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <!-- Blog engine -->
+  <script src="js/blog.js"></script>
+</body>
+</html>
