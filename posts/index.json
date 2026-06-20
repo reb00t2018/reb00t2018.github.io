@@ -3,14 +3,32 @@
     "slug": "hello-world",
     "title": "Hello World — 我的第一篇技术博客",
     "date": "2026-06-18",
-    "tags": ["博客", "折腾"],
+    "tags": [
+      "博客",
+      "折腾"
+    ],
     "excerpt": "第一篇博客，记录搭建这个静态站点的过程和一些想法。"
   },
   {
     "slug": "markdown-demo",
     "title": "Markdown 写作能力演示",
     "date": "2026-06-17",
-    "tags": ["Markdown", "演示"],
+    "tags": [
+      "Markdown",
+      "演示"
+    ],
     "excerpt": "展示本博客支持的 Markdown 语法：标题、代码块、表格、图片、数学公式（可用 KaTeX 扩展）等。"
+  },
+  {
+    "slug": "codex桌面版接入deepseek 指引",
+    "title": "Codex 桌面版接入 DeepSeek 完全指南",
+    "date": "2026-06-20",
+    "tags": [
+      "工具",
+      "AI",
+      "DeepSeek",
+      "Codex"
+    ],
+    "excerpt": "国内 OpenAI 中转站近期大规模关停。用 CC Switch 做本地路由转发，几分钟就能让 Codex 桌面版改用 DeepSeek 的 API。"
   }
 ]
