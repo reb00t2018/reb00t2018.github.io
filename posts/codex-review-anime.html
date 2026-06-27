@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>这力量不属于你！Codex真的有用吗？ - 技术动漫</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;700;900&family=Noto+Serif+SC:wght@700;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0a0a0f;
+  color: #e0e0e0;
+  font-family: 'Noto Sans SC', sans-serif;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* 背景网格 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: 0;
+}
+
+/* 浮动粒子 */
+.particles {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: rgba(0, 240, 255, 0.4);
+  border-radius: 50%;
+  animation: float linear infinite;
+}
+@keyframes float {
+  0% { transform: translateY(100vh) scale(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+}
+
+.slides { position: relative; width: 100vw; height: 100vh; z-index: 1; }
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5vh 8vw;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+.slide.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* 标题页 */
+.title-slide { text-align: center; }
+.title-main {
+  font-family: 'Noto Serif SC', serif;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  background: linear-gradient(135deg, #00f0ff 0%, #ff00aa 50%, #ffd700 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.3;
+  margin-bottom: 1vh;
+  text-shadow: 0 0 60px rgba(0, 240, 255, 0.3);
+  animation: titleGlow 3s ease-in-out infinite alternate;
+}
+@keyframes titleGlow {
+  from { filter: brightness(1) drop-shadow(0 0 20px rgba(0,240,255,0.3)); }
+  to { filter: brightness(1.2) drop-shadow(0 0 40px rgba(255,0,170,0.3)); }
+}
+.title-sub {
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  color: #888;
+  margin-top: 1rem;
+  letter-spacing: 0.3em;
+}
+.title-badge {
+  display: inline-block;
+  padding: 0.3em 1.5em;
+  border: 2px solid #ff00aa;
+  color: #ff00aa;
+  font-weight: 700;
+  font-size: clamp(0.7rem, 1.2vw, 1rem);
+  margin-top: 2rem;
+  letter-spacing: 0.15em;
+  animation: badgePulse 2s ease-in-out infinite;
+}
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255,0,170,0.3); }
+  50% { box-shadow: 0 0 30px rgba(255,0,170,0.6); }
+}
+
+/* 话 标题 */
+.episode-number {
+  font-size: clamp(0.8rem, 1.2vw, 1rem);
+  color: #ff00aa;
+  letter-spacing: 0.2em;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+.episode-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: clamp(1.8rem, 4vw, 3.5rem);
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 2vh;
+  text-align: center;
+  line-height: 1.4;
+}
+.episode-title .highlight {
+  background: linear-gradient(135deg, #00f0ff, #ff00aa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 内容 */
+.content-area {
+  max-width: 900px;
+  width: 100%;
+  text-align: center;
+}
+.content-text {
+  font-size: clamp(1rem, 2vw, 1.6rem);
+  line-height: 1.8;
+  color: #ccc;
+  margin-bottom: 1.5vh;
+}
+.content-text strong {
+  color: #fff;
+  font-weight: 700;
+}
+.content-text .neon {
+  color: #00f0ff;
+  text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+}
+.content-text .pink {
+  color: #ff00aa;
+  text-shadow: 0 0 20px rgba(255, 0, 170, 0.5);
+}
+.content-text .gold {
+  color: #ffd700;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+.content-text .big {
+  font-size: 1.5em;
+  font-weight: 900;
+}
+
+/* 对话框 */
+.dialogue-box {
+  background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 12px;
+  padding: 2vh 2.5vw;
+  margin: 1.5vh auto;
+  max-width: 750px;
+  position: relative;
+}
+.dialogue-box::before {
+  content: '💬';
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  font-size: 1.2rem;
+}
+.dialogue-text {
+  font-size: clamp(1rem, 1.8vw, 1.4rem);
+  line-height: 1.8;
+  color: #e0e0e0;
+  font-style: italic;
+}
+.dialogue-text .em {
+  color: #ffd700;
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* Key Takeaway 框 */
+.takeaway {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.08), rgba(255, 0, 170, 0.08));
+  border-left: 4px solid #00f0ff;
+  border-radius: 0 8px 8px 0;
+  padding: 1.5vh 2vw;
+  margin: 1.5vh auto;
+  max-width: 750px;
+  text-align: left;
+}
+.takeaway-label {
+  font-size: clamp(0.6rem, 0.9vw, 0.8rem);
+  color: #00f0ff;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+.takeaway-text {
+  font-size: clamp(0.85rem, 1.5vw, 1.2rem);
+  line-height: 1.6;
+  color: #ccc;
+}
+
+/* 对比表格 */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5vw;
+  max-width: 700px;
+  margin: 1.5vh auto;
+  width: 100%;
+}
+.compare-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 1.5vh 1.5vw;
+  text-align: center;
+}
+.compare-card h4 {
+  font-size: clamp(0.9rem, 1.3vw, 1.2rem);
+  margin-bottom: 0.5rem;
+}
+.compare-card.codex h4 { color: #00f0ff; }
+.compare-card.doubao h4 { color: #ff00aa; }
+.compare-card p {
+  font-size: clamp(0.7rem, 1vw, 0.9rem);
+  color: #999;
+  line-height: 1.5;
+}
+
+/* 排名 */
+.rank-list {
+  list-style: none;
+  max-width: 650px;
+  margin: 1vh auto;
+  width: 100%;
+}
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+  padding: 0.8vh 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.rank-num {
+  font-size: clamp(1rem, 1.5vw, 1.3rem);
+  font-weight: 900;
+  min-width: 2em;
+  text-align: center;
+}
+.rank-text {
+  font-size: clamp(0.8rem, 1.3vw, 1.1rem);
+  color: #ccc;
+  line-height: 1.5;
+}
+.rank-1 .rank-num { color: #ffd700; }
+.rank-2 .rank-num { color: #c0c0c0; }
+.rank-3 .rank-num { color: #cd7f32; }
+
+/* 角色表 */
+.char-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1vw;
+  max-width: 800px;
+  margin: 1.5vh auto;
+  width: 100%;
+}
+.char-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 1.5vh 1vw;
+  text-align: center;
+}
+.char-name {
+  font-size: clamp(0.8rem, 1.2vw, 1.1rem);
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.3rem;
+}
+.char-role {
+  font-size: clamp(0.6rem, 0.9vw, 0.8rem);
+  color: #888;
+  margin-bottom: 0.5rem;
+}
+.char-power {
+  display: inline-block;
+  padding: 0.2em 0.8em;
+  border: 1px solid #ff00aa;
+  border-radius: 20px;
+  font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+  color: #ff00aa;
+  font-weight: 700;
+}
+
+/* 进度条 */
+.progress-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.05);
+  z-index: 10;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00f0ff, #ff00aa);
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+/* 控制 */
+.controls {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  gap: 10px;
+}
+.controls button {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #888;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+.controls button:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+.controls .slide-num {
+  color: #555;
+  font-size: 0.7rem;
+  align-self: center;
+  padding: 0 8px;
+}
+
+/* 动画 */
+.slide.active .content-area,
+.slide.active .episode-title,
+.slide.active .episode-number,
+.slide.active .dialogue-box,
+.slide.active .takeaway,
+.slide.active .compare-grid,
+.slide.active .char-grid,
+.slide.active .rank-list {
+  animation: fadeUp 0.6s ease both;
+}
+.slide.active .episode-number { animation-delay: 0.1s; }
+.slide.active .episode-title { animation-delay: 0.2s; }
+.slide.active .content-area { animation-delay: 0.3s; }
+.slide.active .dialogue-box { animation-delay: 0.4s; }
+.slide.active .takeaway { animation-delay: 0.5s; }
+.slide.active .compare-grid { animation-delay: 0.4s; }
+.slide.active .char-grid { animation-delay: 0.4s; }
+.slide.active .rank-list { animation-delay: 0.4s; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 打字效果 */
+.typewriter {
+  overflow: hidden;
+  white-space: normal;
+  animation: none;
+}
+.typewriter span {
+  display: inline;
+  opacity: 0;
+  animation: typeIn 0.05s ease forwards;
+}
+@keyframes typeIn {
+  to { opacity: 1; }
+}
+
+/* 滚动弹幕 */
+.danmaku-bar {
+  position: fixed;
+  top: 10px;
+  right: -300px;
+  z-index: 5;
+  padding: 4px 16px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(0,240,255,0.2);
+  border-radius: 4px;
+  color: #00f0ff;
+  font-size: clamp(0.7rem, 1vw, 0.9rem);
+  white-space: nowrap;
+  animation: danmakuFly 5s linear forwards;
+}
+@keyframes danmakuFly {
+  from { right: -300px; }
+  to { right: 110%; }
+}
+
+/* 过渡闪烁 */
+.flash-overlay {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 20;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.flash-overlay.active {
+  opacity: 0.15;
+}
+
+/* 响应式 */
+@media (max-width: 600px) {
+  .slide { padding: 3vh 5vw; }
+  .compare-grid { grid-template-columns: 1fr; }
+  .char-grid { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="particles" id="particles"></div>
+<div class="flash-overlay" id="flash"></div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+<div class="controls">
+  <button onclick="togglePlay()" id="playBtn">⏸</button>
+  <button onclick="prevSlide()">◀</button>
+  <button onclick="nextSlide()">▶</button>
+  <span class="slide-num" id="slideNum">1/14</span>
+</div>
+
+<div class="slides" id="slides">
+
+<!-- Slide 0: Title -->
+<div class="slide title-slide active" data-duration="6">
+  <div class="content-area">
+    <div class="title-main">这力量不属于你！<br>Codex真的有用吗？</div>
+    <div class="title-sub">— 技术动漫 · 完整解说 —</div>
+    <div class="title-badge">🎬 全 8 话 | 6:32 浓缩版</div>
+    <div style="margin-top: 4vh; color: #555; font-size: 0.8rem;">视频作者：玩物小子 · 解说整理：Codex</div>
+  </div>
+</div>
+
+<!-- Slide 1: Opening -->
+<div class="slide" data-duration="7">
+  <div class="content-area">
+    <div class="episode-number">PROLOGUE</div>
+    <div class="episode-title">欢迎来到 <span class="highlight">Codex 实训场</span></div>
+    <div class="takeaway">
+      <div class="takeaway-label">KEY TAKEAWAY</div>
+      <div class="takeaway-text">这不是一个教你写代码的视频。这是一个 <strong>不会写代码的人，如何用 AI 完成 254 人天开发量</strong> 的真实纪录。</div>
+    </div>
+    <div class="dialogue-box">
+      <div class="dialogue-text">主角：玩物小子 · 武器：<span class="em">Codex</span><br>战绩：零行代码，一个完整的产品。<br><br>准备好了？<span class="em">开播。</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 2: Episode 1 -->
+<div class="slide" data-duration="8">
+  <div class="content-area">
+    <div class="episode-number">第一话</div>
+    <div class="episode-title">公司捡到<span class="pink">鬼</span>了</div>
+    <div class="takeaway">
+      <div class="takeaway-label">KEY TAKEAWAY</div>
+      <div class="takeaway-text">AI 的价值不在 "它能写代码"，而在 <strong>"它能替你干活"</strong>。</div>
+    </div>
+    <div class="dialogue-box">
+      <div class="dialogue-text">同事：<span style="color:#888;">"烧了这么多 Token，总得有点成果吧？"</span><br><br>主角：<span class="em">"我把公司的支出成本——降为零了。"</span></div>
+    </div>
+    <div style="margin-top: 1vh; color: #00f0ff; font-size: 0.9rem;">📢 弹幕：「公司捡到鬼啦！」</div>
+  </div>
+</div>
+
+<!-- Slide 3: Episode 2 -->
+<div class="slide" data-duration="9">
+  <div class="content-area">
+    <div class="episode-number">第二话</div>
+    <div class="episode-title">我不会写代码，但<span class="highlight">这不重要</span></div>
+    <div class="takeaway">
+      <div class="takeaway-label">KEY TAKEAWAY</div>
+      <div class="takeaway-text">代码不是壁垒，语言才是。<strong>你嘴里讲的话，就是新的编程语言。</strong></div>
+    </div>
+    <div class="dialogue-box">
+      <div class="dialogue-text">"作为一个普通人，我对代码的理解等于零。<span class="em">看代码像看天书。</span>"<br><br>但他发现——<span class="em">怎么想，就怎么说。<br>怎么说，Codex 就怎么写。</span></div>
+    </div>
+    <div class="content-text" style="font-size:clamp(0.8rem,1.1vw,0.95rem);color:#888;margin-top:0.5rem;">🦾 大哥流编程法：张嘴 → 说人话 → 大哥干活 → 验收 → 迭代</div>
+  </div>
+</div>
+
+<!-- Slide 4: Episode 3 -->
+<div class="slide" data-duration="9">
+  <div class="content-area">
+    <div class="episode-number">第三话</div>
+    <div class="episode-title">记账本大作战：<span class="gold">痛点即起点</span></div>
+    <div class="takeaway">
+      <div class="takeaway-label">KEY TAKEAWAY</div>
+      <div class="takeaway-text">所有伟大的产品，都始于一个<strong>让自己烦透了的痛点</strong>。</div>
+    </div>
+    <div class="content-text" style="font-size:clamp(0.85rem,1.3vw,1.1rem);">
+      "功能用不上，还有一堆广告和跳转。<br>开头总是下载，结尾总是借载。"
+    </div>
+    <div class="dialogue-box">
+      <div class="dialogue-text">"大哥，能不能给我俩生成的——<span class="em">做一个记账本？</span>"</div>
+    </div>
+    <div class="content-text" style="font-size:clamp(0.75rem,1vw,0.9rem);color:#666;margin-top:0.5rem;">Codex 回应了。然后迭代。再看。再说。再改。再改。再好。</div>
+  </div>
+</div>
+
+<!-- Slide 5: Episode 4 -->
+<div class="slide" data-duration="10">
+  <div class="content-area">
+    <div class="episode-number">第四话</div>
+    <div class="episode-title"><span class="highlight">Codex</span> VS <span class="pink">豆包</span>：两大 AI 流派</div>
+    <div class="takeaway">
+      <div class="takeaway-label">KEY TAKEAWAY</div>
+      <div class="takeaway-text">工具选型，本质是哲学选择。<strong>你要成品，还是要能力？</strong></div>
+    </div>
+    <div class="compare-grid">
+      <div class="compare-card codex">
+        <h4>⚡ Codex</h4>
+        <p>开放编程智能体<br>能力无限<br>适合有需求的人</p>
+        <div style="margin-top:0.3rem;font-size:0.7rem;color:#00f0ff;">脑+身的完整智能体</div>
+      </div>
+      <div class="compare-card doubao">
+        <h4>🫘 豆包</h4>
+        <p>开箱即用成品<br>平台内预置功能<br>适合普通用户</p>
+        <div style="margin-top:0.3rem;font-size:0.7rem;color:#ff00aa;">能力全面但范围窄</div>
+      </div>
+    </div>
+    <div class="content-text" style="font-size:clamp(0.7rem,1vw,0.9rem);color:#555;margin-top:0.5rem;">翻译：豆包是电动车，Codex 是<span style="color:#00f0ff;">高达</span></div>
+  </div>
+</div>
+
+<!-- Slide 6: Episode 5 -->
+<div class="slide" data-duration="8">
+  <div class="content-area">
+    <div class="episode-number">第五话</div>
+    <div class="episode-title">语音输入：<span class="highlight">次世代交互</span></div>
+    <div class="takeaway">
+      <div class="takeaway-label">KEY TAKEAWAY</div>
+      <div class="takeaway-text">打字太慢了。<strong>未来的人用嘴写代码。</strong></div>
+    </div>
+    <div class="content-text" style="font-size:clamp(0.85rem,1.3vw,1.1rem);">
+      发现痛点 → 截图/描述 → 丢给大哥<br>→ 大哥给方案 → 选择方案 → 大哥执行
+    </div>
+    <div class="content-text" style="font-size:clamp(0.75rem,1.1vw,0.95rem);color:#888;margin-top:0.8rem;">
+      骚操作：<span style="color:#00f0ff;">直接把 UI 截图丢给 Codex</span>，说"给我做成这个"
+    </div>
+    <div class="content-text" style="font-size:clamp(0.7rem,1vw,0.85rem);color:#555;margin-top:0.5rem;">
+      想到就说 · 说了就做 · 做完再看 · 不行继续
+    </div>
+  </div>
+</div>
+
+<!-- Slide 7: Episode 6 -->
+<div class="slide" data-duration="8">
+  <div class="content-area">
+    <div class="episode-number">第六话</div>
+    <div class="episode-title">iOS VS 安卓：<span class="pink">一场荒诞的联机对骂</span></div>
+    <div class="takeaway">
+      <div class="takeaway-label">KEY TAKEAWAY</div>
+      <div class="takeaway-text">吐槽是产品开发中<strong>最真实的需求调研</strong>。</div>
+    </div>
+    <div class="dialogue-box">
+      <div class="dialogue-text"><span style="color:#00f0ff;">安卓方</span>："安卓 AI 早就可以无感记账了！"<br><br><span style="color:#ff00aa;">iOS 方</span>："Apple Sandbox 懂不懂！你心里没点数？"</div>
+    </div>
+    <div class="content-text" style="font-size:clamp(0.75rem,1.1vw,0.9rem);color:#888;margin-top:0.5rem;">
+      解决方案：网页封装 → 免费服务器 → Codex 迭代发布
+    </div>
+  </div>
+</div>
+
+<!-- Slide 8: Episode 7 -->
+<div class="slide" data-duration="12">
+  <div class="content-area">
+    <div class="episode-number">第七话</div>
+    <div class="episode-title"><span class="gold">254 人天</span> · <span class="highlight">零行代码</span></div>
+    <div class="takeaway">
+      <div class="takeaway-label">KEY TAKEAWAY</div>
+      <div class="takeaway-text">这个时代最值钱的技能，是<strong>提需求</strong>。不是写代码。</div>
+    </div>
+    <div class="dialogue-box">
+      <div class="dialogue-text">
+        "这股力量确实不属于我。我不会写代码。<br>
+        但我要知道的是——<span class="em">我要什么。</span><br><br>
+        我用 Codex 只做一件事：<br>
+        <span class="em" style="font-size:1.3em;">提需求。提需求。<br>还是他妈的——提需求。</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 9: Episode 7b -->
+<div class="slide" data-duration="10">
+  <div class="content-area">
+    <div class="episode-number">第七话 · 续</div>
+    <div class="episode-title" style="font-size:clamp(1.5rem,3vw,2.5rem);">254 人天 · <span class="highlight">零行代码</span></div>
+    <div class="dialogue-box">
+      <div class="dialogue-text">
+        "这个账本，我进行了 <span class="em">254 人天开发</span>。<br>
+        需求评审、方案选型、上线测试、<br>
+        稳定迭代、敏捷开发——一步步来。<br><br>
+        唯一的细节是——<br>
+        <span class="em" style="font-size:1.3em;color:#ffd700;">这 254 人天，我没写一行代码。</span>"
+      </div>
+    </div>
+    <div class="content-text" style="font-size:clamp(0.8rem,1.2vw,1rem);color:#888;margin-top:0.8rem;">
+      会写代码的是 AI。<strong style="color:#fff;">但提出需求、做选择、让他发挥价值的人——才是最重要的。</strong>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 10: Final Episode -->
+<div class="slide" data-duration="8">
+  <div class="content-area">
+    <div class="episode-number">最终话</div>
+    <div class="episode-title">力量不属于你，但<span class="highlight">成果属于你</span></div>
+    <div class="takeaway">
+      <div class="takeaway-label">FINAL MESSAGE</div>
+      <div class="takeaway-text">码不是力量。<strong>知道要码什么，才是。</strong></div>
+    </div>
+    <div class="dialogue-box">
+      <div class="dialogue-text">
+        "提需求、解决问题、拿到成果——<span class="em">好玩啊。</span>"<br><br>
+        "你——<span class="em">你才是真正的英雄。</span>"
+      </div>
+    </div>
+    <div style="margin-top:1vh;display:flex;gap:1vw;justify-content:center;font-size:clamp(0.8rem,1.1vw,0.9rem);">
+      <span style="color:#00f0ff;">太对啦</span>
+      <span style="color:#ff00aa;">公司捡到鬼啦</span>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 11: 名台词 -->
+<div class="slide" data-duration="10">
+  <div class="content-area">
+    <div class="episode-number">🏆 特别收录</div>
+    <div class="episode-title" style="font-size:clamp(1.5rem,3vw,2.5rem);">名台词 <span class="gold">排行榜</span></div>
+    <ul class="rank-list">
+      <li class="rank-item rank-1"><span class="rank-num">🥇</span><span class="rank-text">"提需求。提需求。还是他妈的提需求。"</span></li>
+      <li class="rank-item rank-2"><span class="rank-num">🥈</span><span class="rank-text">"254 人天，没写一行代码。"</span></li>
+      <li class="rank-item rank-3"><span class="rank-num">🥉</span><span class="rank-text">"君子动口不用手。"</span></li>
+      <li class="rank-item"><span class="rank-num" style="color:#555;">4</span><span class="rank-text">"怎么想就怎么说，怎么说大哥就怎么写。"</span></li>
+      <li class="rank-item"><span class="rank-num" style="color:#555;">5</span><span class="rank-text">"公司捡到鬼啦！"</span></li>
+      <li class="rank-item"><span class="rank-num" style="color:#555;">6</span><span class="rank-text">"提需求、做选择、让他发挥价值的人——才是最重要的。"</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- Slide 12: 角色设定 -->
+<div class="slide" data-duration="8">
+  <div class="content-area">
+    <div class="episode-number">📋 特别收录</div>
+    <div class="episode-title" style="font-size:clamp(1.5rem,3vw,2.5rem);">角色 <span class="highlight">设定</span></div>
+    <div class="char-grid">
+      <div class="char-card">
+        <div class="char-name">玩物小子</div>
+        <div class="char-role">不会写代码的主角</div>
+        <div class="char-power">需求力 MAX</div>
+      </div>
+      <div class="char-card">
+        <div class="char-name">Codex</div>
+        <div class="char-role">AI 编程智能体</div>
+        <div class="char-power">执行力 MAX</div>
+      </div>
+      <div class="char-card">
+        <div class="char-name">豆包</div>
+        <div class="char-role">字节系 AI</div>
+        <div class="char-power">便利性 A</div>
+      </div>
+      <div class="char-card">
+        <div class="char-name">安卓开发者</div>
+        <div class="char-role">嘴炮王者</div>
+        <div class="char-power">吐槽力 S</div>
+      </div>
+      <div class="char-card">
+        <div class="char-name">iOS 开发者</div>
+        <div class="char-role">沙盒受害者</div>
+        <div class="char-power">防御力 S</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 13: 片尾 -->
+<div class="slide" data-duration="6">
+  <div class="content-area" style="text-align:center;">
+    <div class="title-main" style="font-size:clamp(1.5rem,3vw,2.5rem);-webkit-text-fill-color:#fff;background:none;text-shadow:none;color:#fff;">
+      你不会飞，但可以坐飞机。<br>
+      你不会游泳，但可以坐船。<br>
+      你不会写代码，但可以<span style="color:#00f0ff;">用 Codex</span>。
+    </div>
+    <div style="margin-top:4vh;color:#555;font-size:clamp(0.7rem,1vw,0.8rem);">
+      这力量不完全属于你。<br>
+      但你不需要拥有它。<span style="color:#ffd700;">你只需要用好它。</span>
+    </div>
+    <div style="margin-top:3vh;color:#333;font-size:0.7rem;">
+      视频作者：玩物小子 · 解说：Codex · 全文完
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// 粒子背景
+(function() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDuration = (8 + Math.random() * 15) + 's';
+    p.style.animationDelay = (Math.random() * 15) + 's';
+    p.style.width = p.style.height = (1 + Math.random() * 3) + 'px';
+    container.appendChild(p);
+  }
+})();
+
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let current = 0;
+let playing = true;
+let timer = null;
+let slideTimer = null;
+
+function showSlide(idx) {
+  slides.forEach(s => s.classList.remove('active'));
+  slides[idx].classList.add('active');
+  document.getElementById('slideNum').textContent = `${idx+1}/${total}`;
+  document.getElementById('progressFill').style.width = `${((idx+1)/total)*100}%`;
+  
+  // 闪烁过渡
+  const flash = document.getElementById('flash');
+  flash.classList.add('active');
+  setTimeout(() => flash.classList.remove('active'), 150);
+}
+
+function nextSlide() {
+  if (current < total - 1) {
+    current++;
+    showSlide(current);
+    resetTimer();
+  } else {
+    playing = false;
+    document.getElementById('playBtn').textContent = '▶';
+  }
+}
+
+function prevSlide() {
+  if (current > 0) {
+    current--;
+    showSlide(current);
+    resetTimer();
+  }
+}
+
+function getDuration() {
+  const d = slides[current].getAttribute('data-duration');
+  return d ? parseFloat(d) * 1000 : 7000;
+}
+
+function resetTimer() {
+  clearTimeout(timer);
+  if (playing) {
+    timer = setTimeout(nextSlide, getDuration());
+  }
+}
+
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('playBtn').textContent = playing ? '⏸' : '▶';
+  if (playing && current < total - 1) {
+    resetTimer();
+  } else {
+    clearTimeout(timer);
+  }
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+  if (e.key === 'p') { togglePlay(); }
+});
+
+// Start
+showSlide(0);
+resetTimer();
+</script>
+</body>
+</html>

@@ -30,5 +30,17 @@
       "Codex"
     ],
     "excerpt": "国内 OpenAI 中转站近期大规模关停。用 CC Switch 做本地路由转发，几分钟就能让 Codex 桌面版改用 DeepSeek 的 API。"
+  },
+  {
+    "slug": "codex-review-anime",
+    "title": "这力量不属于你！Codex真的有用吗？（技术动漫解读篇）",
+    "date": "2026-06-27",
+    "tags": [
+      "Codex",
+      "AI编程",
+      "视频解读",
+      "技术动漫"
+    ],
+    "excerpt": "零代码基础的人用 Codex 完成了 254 人天开发 —— 提需求，还是他妈的提需求。"
   }
 ]
