@@ -1,0 +1,569 @@
+/* ============================================================
+   reb00t's blog — Tech Showcase / Interactive Pages
+   共享样式框架 · 适用于技术动漫、幻灯式解读等沉浸页面
+   ============================================================ */
+
+/* ----- CSS Variables (overridable per-page) ----- */
+:root {
+  --ts-bg:            #0a0a0f;
+  --ts-bg-grid:       rgba(0, 240, 255, 0.03);
+  --ts-text:          #e0e0e0;
+  --ts-text-dim:      #888;
+  --ts-text-muted:    #555;
+  --ts-text-dark:     #333;
+  --ts-accent-cyan:   #00f0ff;
+  --ts-accent-pink:   #ff00aa;
+  --ts-accent-gold:   #ffd700;
+  --ts-border:        rgba(255,255,255,0.08);
+  --ts-border-light:  rgba(0, 240, 255, 0.2);
+  --ts-card-bg:       rgba(255,255,255,0.03);
+  --ts-card-bg-hover: rgba(255,255,255,0.05);
+  --ts-takeaway-bg:   linear-gradient(135deg, rgba(0,240,255,0.06), rgba(255,0,170,0.06));
+  --ts-font-display:  'Noto Serif SC', 'Source Han Serif SC', serif;
+  --ts-font-body:     'Noto Sans SC', -apple-system, 'PingFang SC', sans-serif;
+  --ts-font-mono:     'JetBrains Mono', 'Fira Code', monospace;
+  --ts-radius:        12px;
+  --ts-radius-sm:     8px;
+}
+
+/* ============================================================
+   BASE LAYOUT
+   ============================================================ */
+.ts-body {
+  margin: 0;
+  padding: 0;
+  background: var(--ts-bg);
+  color: var(--ts-text);
+  font-family: var(--ts-font-body);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Grid background overlay */
+.ts-body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--ts-bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ts-bg-grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Floating particles container */
+.ts-particles {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ============================================================
+   NAV BAR (matches blog style)
+   ============================================================ */
+.ts-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: rgba(10, 10, 15, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.ts-nav-brand {
+  font-family: var(--ts-font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ts-text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+}
+.ts-nav-brand:hover { color: var(--ts-accent-cyan); text-decoration: none; }
+.ts-nav-brand .prompt { color: var(--ts-accent-cyan); }
+.ts-nav-brand .cursor {
+  color: var(--ts-accent-cyan);
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+.ts-nav-back {
+  font-family: var(--ts-font-mono);
+  font-size: 0.75rem;
+  color: var(--ts-text-dim);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.2s;
+}
+.ts-nav-back:hover { color: var(--ts-accent-cyan); text-decoration: none; }
+
+/* ============================================================
+   SLIDE SYSTEM
+   ============================================================ */
+.ts-slides {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+.ts-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 8vw 40px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+.ts-slide.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+.ts-title-main {
+  font-family: var(--ts-font-display);
+  font-size: clamp(2.2rem, 5.5vw, 4.5rem);
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--ts-accent-cyan) 0%, var(--ts-accent-pink) 50%, var(--ts-accent-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.3;
+  animation: tsGlow 3s ease-in-out infinite alternate;
+}
+@keyframes tsGlow {
+  from { filter: brightness(1) drop-shadow(0 0 20px rgba(0,240,255,0.2)); }
+  to   { filter: brightness(1.15) drop-shadow(0 0 40px rgba(255,0,170,0.2)); }
+}
+.ts-title-sub {
+  font-size: clamp(0.9rem, 1.8vw, 1.4rem);
+  color: var(--ts-text-dim);
+  letter-spacing: 0.3em;
+  margin-top: 0.8rem;
+}
+.ts-badge {
+  display: inline-block;
+  padding: 0.25em 1.2em;
+  border: 2px solid var(--ts-accent-pink);
+  color: var(--ts-accent-pink);
+  font-weight: 700;
+  font-size: clamp(0.65rem, 1vw, 0.9rem);
+  letter-spacing: 0.12em;
+  animation: badgePulse 2s ease-in-out infinite;
+  margin-top: 1.5rem;
+}
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255,0,170,0.25); }
+  50%      { box-shadow: 0 0 25px rgba(255,0,170,0.5); }
+}
+
+/* Episode / Section headers */
+.ts-ep-num {
+  font-size: clamp(0.7rem, 1vw, 0.9rem);
+  color: var(--ts-accent-pink);
+  letter-spacing: 0.2em;
+  margin-bottom: 0.4rem;
+  font-weight: 700;
+}
+.ts-ep-title {
+  font-family: var(--ts-font-display);
+  font-size: clamp(1.5rem, 3.5vw, 3rem);
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 1.5vh;
+  line-height: 1.4;
+  text-align: center;
+}
+.ts-ep-title .cyan  { color: var(--ts-accent-cyan); }
+.ts-ep-title .pink  { color: var(--ts-accent-pink); }
+.ts-ep-title .gold  { color: var(--ts-accent-gold); }
+.ts-ep-title .grad  {
+  background: linear-gradient(135deg, var(--ts-accent-cyan), var(--ts-accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Body text */
+.ts-text {
+  font-size: clamp(0.85rem, 1.8vw, 1.4rem);
+  line-height: 1.8;
+  color: #ccc;
+  max-width: 750px;
+  text-align: center;
+  margin: 0 auto;
+}
+.ts-text strong { color: #fff; font-weight: 700; }
+.ts-text .cyan  { color: var(--ts-accent-cyan); text-shadow: 0 0 12px rgba(0,240,255,0.3); }
+.ts-text .pink  { color: var(--ts-accent-pink); text-shadow: 0 0 12px rgba(255,0,170,0.3); }
+.ts-text .gold  { color: var(--ts-accent-gold); text-shadow: 0 0 12px rgba(255,215,0,0.3); }
+.ts-text .big   { font-size: 1.3em; font-weight: 900; }
+.ts-text .small { font-size: clamp(0.7rem, 1vw, 0.85rem); color: var(--ts-text-muted); }
+
+/* ============================================================
+   COMPONENTS
+   ============================================================ */
+
+/* Dialogue Box — 台词/引用气泡 */
+.ts-dialogue {
+  background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  border: 1px solid var(--ts-border-light);
+  border-radius: var(--ts-radius);
+  padding: 1.8vh 2.2vw;
+  margin: 1.2vh auto;
+  max-width: 700px;
+  min-width: 280px;
+  position: relative;
+}
+.ts-dialogue::before {
+  content: '💬';
+  position: absolute;
+  top: -10px;
+  left: 18px;
+  font-size: 1rem;
+}
+.ts-dialogue-text {
+  font-size: clamp(0.9rem, 1.6vw, 1.3rem);
+  line-height: 1.8;
+  color: var(--ts-text);
+  font-style: italic;
+}
+.ts-dialogue-text .em {
+  color: var(--ts-accent-gold);
+  font-weight: 700;
+  font-style: normal;
+}
+.ts-dialogue-text .left {
+  text-align: left;
+}
+
+/* Key Takeaway 框 */
+.ts-takeaway {
+  background: var(--ts-takeaway-bg);
+  border-left: 4px solid var(--ts-accent-cyan);
+  border-radius: 0 var(--ts-radius-sm) var(--ts-radius-sm) 0;
+  padding: 1.2vh 1.8vw;
+  margin: 1.2vh auto;
+  max-width: 700px;
+  min-width: 280px;
+  text-align: left;
+}
+.ts-takeaway-label {
+  font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+  color: var(--ts-accent-cyan);
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  margin-bottom: 0.2rem;
+}
+.ts-takeaway-text {
+  font-size: clamp(0.8rem, 1.3vw, 1.1rem);
+  line-height: 1.6;
+  color: #bbb;
+}
+
+/* Feature flags / bullet points */
+.ts-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 1vh auto;
+  max-width: 650px;
+  text-align: left;
+}
+.ts-bullets li {
+  font-size: clamp(0.75rem, 1.2vw, 1rem);
+  color: #bbb;
+  line-height: 1.8;
+  padding-left: 1.2em;
+  position: relative;
+}
+.ts-bullets li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: var(--ts-accent-cyan);
+}
+
+/* Danmaku / 弹幕样式 */
+.ts-danmaku {
+  display: flex;
+  gap: 1vw;
+  justify-content: center;
+  margin-top: 1vh;
+  flex-wrap: wrap;
+}
+.ts-danmaku span {
+  font-size: clamp(0.7rem, 1vw, 0.85rem);
+  padding: 2px 12px;
+  border-radius: 4px;
+}
+.ts-danmaku .d-cyan { color: var(--ts-accent-cyan); border: 1px solid rgba(0,240,255,0.2); background: rgba(0,240,255,0.05); }
+.ts-danmaku .d-pink { color: var(--ts-accent-pink); border: 1px solid rgba(255,0,170,0.2);  background: rgba(255,0,170,0.05); }
+
+/* Comparison Grid — 对比卡片 */
+.ts-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2vw;
+  max-width: 650px;
+  margin: 1.5vh auto;
+  width: 100%;
+}
+.ts-compare-card {
+  background: var(--ts-card-bg);
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius-sm);
+  padding: 1.2vh 1.5vw;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.ts-compare-card:hover { border-color: var(--ts-border-light); }
+.ts-compare-card h4 { font-size: clamp(0.85rem, 1.2vw, 1.1rem); margin-bottom: 0.3rem; }
+.ts-compare-card.cc-cyan h4 { color: var(--ts-accent-cyan); }
+.ts-compare-card.cc-pink h4 { color: var(--ts-accent-pink); }
+.ts-compare-card p {
+  font-size: clamp(0.65rem, 0.9vw, 0.85rem);
+  color: #999;
+  line-height: 1.5;
+}
+.ts-compare-card .tagline {
+  font-size: clamp(0.6rem, 0.8vw, 0.7rem);
+  margin-top: 0.3rem;
+}
+
+/* Ranking List */
+.ts-rank {
+  list-style: none;
+  max-width: 600px;
+  margin: 1vh auto;
+  width: 100%;
+  padding: 0;
+}
+.ts-rank-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8vw;
+  padding: 0.6vh 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.ts-rank-num {
+  font-size: clamp(0.9rem, 1.3vw, 1.2rem);
+  font-weight: 900;
+  min-width: 2em;
+  text-align: center;
+}
+.ts-rank-text {
+  font-size: clamp(0.75rem, 1.1vw, 1rem);
+  color: #ccc;
+  line-height: 1.5;
+}
+.ts-rank-1 .ts-rank-num { color: var(--ts-accent-gold); }
+.ts-rank-2 .ts-rank-num { color: #c0c0c0; }
+.ts-rank-3 .ts-rank-num { color: #cd7f32; }
+
+/* Character Grid */
+.ts-chars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1vw;
+  max-width: 750px;
+  margin: 1.5vh auto;
+  width: 100%;
+}
+.ts-char-card {
+  background: var(--ts-card-bg);
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius-sm);
+  padding: 1.2vh 0.8vw;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.ts-char-card:hover { border-color: var(--ts-accent-pink); }
+.ts-char-name {
+  font-size: clamp(0.75rem, 1vw, 1rem);
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.2rem;
+}
+.ts-char-role {
+  font-size: clamp(0.55rem, 0.8vw, 0.75rem);
+  color: #888;
+  margin-bottom: 0.3rem;
+}
+.ts-char-power {
+  display: inline-block;
+  padding: 0.15em 0.6em;
+  border: 1px solid var(--ts-accent-pink);
+  border-radius: 20px;
+  font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+  color: var(--ts-accent-pink);
+  font-weight: 700;
+}
+
+/* Content separator */
+.ts-separator {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ts-accent-cyan), var(--ts-accent-pink));
+  margin: 0.8vh auto;
+}
+
+/* ============================================================
+   PROGRESS BAR & CONTROLS
+   ============================================================ */
+.ts-progress {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.04);
+  z-index: 50;
+}
+.ts-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ts-accent-cyan), var(--ts-accent-pink));
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.ts-controls {
+  position: fixed;
+  bottom: 14px;
+  right: 20px;
+  z-index: 50;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.ts-controls button {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #666;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-family: var(--ts-font-mono);
+  transition: all 0.2s;
+}
+.ts-controls button:hover {
+  background: rgba(255,255,255,0.08);
+  color: #ccc;
+  border-color: rgba(255,255,255,0.2);
+}
+.ts-controls .ts-slide-num {
+  font-family: var(--ts-font-mono);
+  font-size: 0.6rem;
+  color: #444;
+  padding: 0 6px;
+}
+.ts-controls .ts-slide-title {
+  font-family: var(--ts-font-mono);
+  font-size: 0.6rem;
+  color: #333;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+.ts-slide.active .ts-fade-in { animation: tsFadeUp 0.6s ease both; }
+.ts-slide.active .ts-delay-1 { animation-delay: 0.1s; }
+.ts-slide.active .ts-delay-2 { animation-delay: 0.2s; }
+.ts-slide.active .ts-delay-3 { animation-delay: 0.3s; }
+.ts-slide.active .ts-delay-4 { animation-delay: 0.4s; }
+.ts-slide.active .ts-delay-5 { animation-delay: 0.5s; }
+
+@keyframes tsFadeUp {
+  from { opacity: 0; transform: translateY(25px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Flash transition overlay */
+.ts-flash {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.ts-flash.active {
+  opacity: 0.12;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  .ts-slide { padding: 56px 5vw 36px; }
+  .ts-compare { grid-template-columns: 1fr; gap: 8px; }
+  .ts-chars { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .ts-dialogue { padding: 1.2vh 3vw; }
+  .ts-takeaway { padding: 1vh 3vw; }
+  .ts-controls .ts-slide-title { display: none; }
+}
+@media (max-width: 480px) {
+  .ts-chars { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ============================================================
+   HELPER: Fullscreen toggle
+   ============================================================ */
+.ts-fullscreen-btn {
+  position: fixed;
+  bottom: 14px;
+  left: 20px;
+  z-index: 50;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #666;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-family: var(--ts-font-mono);
+  transition: all 0.2s;
+}
+.ts-fullscreen-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: #ccc;
+}
+
+/* ============================================================
+   UTILITY: Slide usage indicator
+   ============================================================ */
+.ts-footer-note {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  font-family: var(--ts-font-mono);
+  font-size: 0.55rem;
+  color: #222;
+  letter-spacing: 0.1em;
+}

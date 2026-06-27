@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>标题 — reb00t</title>
+
+<!-- ====== 共享样式框架 ====== -->
+<link rel="stylesheet" href="../css/tech-showcase.css">
+
+<!-- ====== 页面级自定义样式 ====== -->
+<style>
+/*
+  :root {
+    可选覆盖: 改主题色、字体等
+    --ts-accent-cyan: #00ff88;
+    --ts-accent-pink: #ff6600;
+  }
+*/
+</style>
+</head>
+<body class="ts-body">
+
+<!-- ====== 顶栏导航 ====== -->
+<nav class="ts-nav">
+  <a class="ts-nav-brand" href="../">
+    <span class="prompt">></span> reb00t<span class="cursor">_</span>
+  </a>
+  <a class="ts-nav-back" href="../">← 返回博客</a>
+</nav>
+
+<!-- ====== 浮动粒子（可选） ====== -->
+<div class="ts-particles" id="particles"></div>
+
+<!-- ====== 翻页闪烁遮罩 ====== -->
+<div class="ts-flash" id="flash"></div>
+
+<!-- ====== 进度条 ====== -->
+<div class="ts-progress"><div class="ts-progress-fill" id="progressFill"></div></div>
+
+<!-- ====== 控制栏 ====== -->
+<div class="ts-controls">
+  <button onclick="togglePlay()" id="playBtn">⏸</button>
+  <button onclick="prevSlide()">◀</button>
+  <button onclick="nextSlide()">▶</button>
+  <span class="ts-slide-num" id="slideNum">1/1</span>
+</div>
+<button class="ts-fullscreen-btn" onclick="toggleFullscreen()">⛶ 全屏</button>
+
+<!-- ====== 幻灯片容器 ====== -->
+<div class="ts-slides" id="slides">
+
+  <!--
+    ═══════════════════════════════════════════════════════════
+    幻灯片模板 — 复制下方结构新增页面
+
+    每个 <div class="ts-slide" data-duration="秒数">
+    支持 class: .active (默认首页), .title-slide (首页专用)
+    ═══════════════════════════════════════════════════════════
+  -->
+
+  <!-- Slide 示例: 标题页 -->
+  <div class="ts-slide title-slide active" data-duration="6">
+    <div class="ts-fade-in">
+      <div class="ts-title-main">标题文字</div>
+      <div class="ts-title-sub">— 副标题 —</div>
+      <div class="ts-badge">🏷️ 标签</div>
+    </div>
+  </div>
+
+  <!-- Slide 示例: 正文+语录 -->
+  <div class="ts-slide" data-duration="8">
+    <div class="ts-ep-num ts-fade-in ts-delay-1">序章</div>
+    <div class="ts-ep-title ts-fade-in ts-delay-2">章节 <span class="grad">标题</span></div>
+
+    <div class="ts-takeaway ts-fade-in ts-delay-3">
+      <div class="ts-takeaway-label">KEY TAKEAWAY</div>
+      <div class="ts-takeaway-text">核心观点摘要</div>
+    </div>
+
+    <div class="ts-dialogue ts-fade-in ts-delay-4">
+      <div class="ts-dialogue-text">
+        "引语台词"<br>
+        <span class="em">强调内容</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 示例: 对比卡片 -->
+  <div class="ts-slide" data-duration="10">
+    <div class="ts-ep-num ts-fade-in ts-delay-1">第四话</div>
+    <div class="ts-ep-title ts-fade-in ts-delay-2"><span class="grad">工具A</span> VS <span class="pink">工具B</span></div>
+
+    <div class="ts-compare ts-fade-in ts-delay-3">
+      <div class="ts-compare-card cc-cyan">
+        <h4>⚡ 工具A</h4>
+        <p>特点描述</p>
+        <div class="tagline" style="color:var(--ts-accent-cyan);">标签</div>
+      </div>
+      <div class="ts-compare-card cc-pink">
+        <h4>🫘 工具B</h4>
+        <p>特点描述</p>
+        <div class="tagline" style="color:var(--ts-accent-pink);">标签</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 示例: 排行榜 -->
+  <div class="ts-slide" data-duration="10">
+    <div class="ts-ep-num ts-fade-in ts-delay-1">🏆 特别收录</div>
+    <div class="ts-ep-title ts-fade-in ts-delay-2">排行榜</div>
+
+    <ul class="ts-rank ts-fade-in ts-delay-3">
+      <li class="ts-rank-item ts-rank-1"><span class="ts-rank-num">🥇</span><span class="ts-rank-text">"排名第一的台词"</span></li>
+      <li class="ts-rank-item ts-rank-2"><span class="ts-rank-num">🥈</span><span class="ts-rank-text">"排名第二的台词"</span></li>
+      <li class="ts-rank-item ts-rank-3"><span class="ts-rank-num">🥉</span><span class="ts-rank-text">"排名第三的台词"</span></li>
+    </ul>
+  </div>
+
+  <!-- Slide 示例: 角色表 -->
+  <div class="ts-slide" data-duration="8">
+    <div class="ts-ep-num ts-fade-in ts-delay-1">📋 角色设定</div>
+    <div class="ts-ep-title ts-fade-in ts-delay-2">角色 <span class="grad">设定</span></div>
+
+    <div class="ts-chars ts-fade-in ts-delay-3">
+      <div class="ts-char-card"><div class="ts-char-name">角色A</div><div class="ts-char-role">定位</div><div class="ts-char-power">战力 S</div></div>
+      <div class="ts-char-card"><div class="ts-char-name">角色B</div><div class="ts-char-role">定位</div><div class="ts-char-power">战力 A</div></div>
+    </div>
+  </div>
+
+  <!-- Slide 示例: 片尾 -->
+  <div class="ts-slide" data-duration="6">
+    <div class="ts-fade-in">
+      <div class="ts-title-main" style="font-size:clamp(1.2rem,2.8vw,2.2rem);-webkit-text-fill-color:#fff;color:#fff;background:none;">
+        金句结语
+      </div>
+      <div style="margin-top:4vh;color:#555;">end.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ====== JavaScript: 幻灯片引擎 ====== -->
+<script>
+// ---- 粒子背景（可选） ----
+(function() {
+  const c = document.getElementById('particles');
+  if (!c) return;
+  for (let i = 0; i < 25; i++) {
+    const p = document.createElement('div');
+    p.style.cssText = 'position:absolute;width:'+(1+Math.random()*3)+'px;height:'+(1+Math.random()*3)+'px;background:rgba(0,240,255,0.3);border-radius:50%;left:'+(Math.random()*100)+'%;animation:float '+(8+Math.random()*15)+'s linear '+(Math.random()*15)+'s infinite';
+    p.className = 'ts-particle';
+    c.appendChild(p);
+  }
+})();
+// CSS for particles
+const ps = document.createElement('style');
+ps.textContent = '.ts-particle { position:absolute;border-radius:50%;pointer-events:none; } @keyframes float { 0%{transform:translateY(100vh) scale(0);opacity:0} 10%{opacity:1} 90%{opacity:1} 100%{transform:translateY(-10vh) scale(1);opacity:0} }';
+document.head.appendChild(ps);
+
+// ---- 幻灯片引擎 ----
+const slides = document.querySelectorAll('.ts-slide');
+const total = slides.length;
+let current = 0;
+let playing = true;
+let timer = null;
+
+function showSlide(idx) {
+  slides.forEach(s => s.classList.remove('active'));
+  slides[idx].classList.add('active');
+  const num = document.getElementById('slideNum');
+  if (num) num.textContent = (idx+1)+'/'+total;
+  const fill = document.getElementById('progressFill');
+  if (fill) fill.style.width = ((idx+1)/total*100)+'%';
+  const flash = document.getElementById('flash');
+  if (flash) { flash.classList.add('active'); setTimeout(()=>flash.classList.remove('active'), 120); }
+}
+
+function nextSlide() {
+  if (current < total - 1) { current++; showSlide(current); resetTimer(); }
+  else { playing = false; const pb = document.getElementById('playBtn'); if(pb) pb.textContent = '▶'; }
+}
+function prevSlide() {
+  if (current > 0) { current--; showSlide(current); resetTimer(); }
+}
+function getDuration() {
+  const d = slides[current].getAttribute('data-duration');
+  return (d ? parseFloat(d) : 7) * 1000;
+}
+function resetTimer() {
+  clearTimeout(timer);
+  if (playing) timer = setTimeout(nextSlide, getDuration());
+}
+function togglePlay() {
+  playing = !playing;
+  const pb = document.getElementById('playBtn');
+  if (pb) pb.textContent = playing ? '⏸' : '▶';
+  if (playing && current < total - 1) resetTimer();
+  else clearTimeout(timer);
+}
+function toggleFullscreen() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+  else document.exitFullscreen?.();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight'||e.key===' ') { e.preventDefault(); nextSlide(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+  if (e.key === 'p') { togglePlay(); }
+  if (e.key === 'f') { toggleFullscreen(); }
+});
+
+showSlide(0);
+resetTimer();
+</script>
+</body>
+</html>
