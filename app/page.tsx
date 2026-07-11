@@ -49,16 +49,19 @@ const emptyInput = (): Input => ({
 });
 
 const palette = {
-  sky: "#162036",
-  sky2: "#243654",
-  ink: "#08111e",
-  ground: "#2f3c2b",
-  groundDark: "#161e17",
-  neon: "#79f29f",
-  amber: "#ffd166",
-  red: "#ff4d5d",
-  blue: "#5bd2ff",
-  white: "#f8ffe8",
+  sky: "#1a2f4d",
+  sky2: "#2d5b60",
+  ink: "#071018",
+  ground: "#4f4a2d",
+  groundDark: "#1a1f18",
+  vine: "#1f6b3a",
+  leaf: "#4a9c46",
+  neon: "#8cdf5f",
+  amber: "#f2c14e",
+  red: "#d6423a",
+  blue: "#67c8d5",
+  skin: "#d8a46d",
+  white: "#fff3c7",
 };
 
 export default function Home() {
@@ -109,19 +112,22 @@ export default function Home() {
     const bullets: Bullet[] = [];
     const sparks: Bullet[] = [];
     const pickups: Pickup[] = [
-      { x: 680, y: 270, kind: "spread" },
-      { x: 1460, y: 220, kind: "rapid" },
-      { x: 2320, y: 260, kind: "heart" },
+      { x: 620, y: 258, kind: "spread" },
+      { x: 1390, y: 226, kind: "rapid" },
+      { x: 2380, y: 272, kind: "heart" },
     ];
     const enemies: Enemy[] = [
-      { x: 520, y: GROUND - 40, w: 30, h: 40, hp: 2, type: "runner", fire: 0, dir: -1 },
-      { x: 860, y: GROUND - 34, w: 36, h: 34, hp: 3, type: "turret", fire: 0.8, dir: -1 },
-      { x: 1180, y: 250, w: 34, h: 26, hp: 2, type: "drone", fire: 0.6, dir: -1 },
-      { x: 1500, y: GROUND - 40, w: 30, h: 40, hp: 2, type: "runner", fire: 0, dir: -1 },
-      { x: 1850, y: 250, w: 34, h: 26, hp: 2, type: "drone", fire: 1.1, dir: -1 },
-      { x: 2140, y: GROUND - 34, w: 36, h: 34, hp: 4, type: "turret", fire: 0.4, dir: -1 },
-      { x: 2660, y: GROUND - 40, w: 30, h: 40, hp: 3, type: "runner", fire: 0, dir: -1 },
-      { x: 3100, y: GROUND - 124, w: 118, h: 124, hp: 28, type: "boss", fire: 0.5, dir: -1 },
+      { x: 420, y: GROUND - 42, w: 28, h: 42, hp: 2, type: "runner", fire: 0, dir: -1 },
+      { x: 620, y: GROUND - 42, w: 28, h: 42, hp: 2, type: "runner", fire: 0, dir: -1 },
+      { x: 850, y: GROUND - 32, w: 42, h: 32, hp: 4, type: "turret", fire: 0.7, dir: -1 },
+      { x: 1120, y: 248, w: 34, h: 24, hp: 2, type: "drone", fire: 0.6, dir: -1 },
+      { x: 1450, y: GROUND - 42, w: 28, h: 42, hp: 2, type: "runner", fire: 0, dir: -1 },
+      { x: 1670, y: GROUND - 42, w: 28, h: 42, hp: 2, type: "runner", fire: 0, dir: -1 },
+      { x: 1880, y: 232, w: 34, h: 24, hp: 2, type: "drone", fire: 1.1, dir: -1 },
+      { x: 2130, y: GROUND - 32, w: 42, h: 32, hp: 4, type: "turret", fire: 0.4, dir: -1 },
+      { x: 2480, y: GROUND - 42, w: 28, h: 42, hp: 3, type: "runner", fire: 0, dir: -1 },
+      { x: 2730, y: GROUND - 42, w: 28, h: 42, hp: 3, type: "runner", fire: 0, dir: -1 },
+      { x: 3130, y: GROUND - 132, w: 126, h: 132, hp: 32, type: "boss", fire: 0.5, dir: -1 },
     ];
 
     const beep = (freq: number, dur = 0.05, type: OscillatorType = "square") => {
@@ -163,7 +169,7 @@ export default function Home() {
           player.x = 84;
           scroll = 0;
           enemies.forEach((e) => {
-            if (e.type === "boss") e.hp = 28;
+            if (e.type === "boss") e.hp = 32;
             else e.hp = Math.max(e.hp, 2);
           });
         }
@@ -317,7 +323,7 @@ export default function Home() {
         hp: player.hp,
         score: player.score,
         weapon: player.weapon,
-        boss: boss ? Math.max(0, boss.hp / 28) : 0,
+        boss: boss ? Math.max(0, boss.hp / 32) : 0,
         message: player.won ? "MISSION CLEAR" : messageTimer > 0 ? "READY" : "",
         won: player.won,
       });
@@ -333,42 +339,83 @@ export default function Home() {
       ctx.restore();
     };
 
+    const drawBlock = (x: number, y: number, w: number, h: number, color: string, shade = palette.ink) => {
+      ctx.fillStyle = shade;
+      ctx.fillRect(x + 3, y + 3, w, h);
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, w, h);
+    };
+
+    const drawPalm = (x: number, y: number, scale = 1) => {
+      ctx.fillStyle = "#2a1d18";
+      ctx.fillRect(x + 18 * scale, y + 54 * scale, 14 * scale, 128 * scale);
+      ctx.fillStyle = "#573720";
+      for (let n = 0; n < 7; n += 1) {
+        ctx.fillRect(x + (18 + (n % 2) * 8) * scale, y + (58 + n * 16) * scale, 14 * scale, 6 * scale);
+      }
+      ctx.fillStyle = palette.vine;
+      ctx.fillRect(x - 20 * scale, y + 28 * scale, 92 * scale, 18 * scale);
+      ctx.fillRect(x + 8 * scale, y, 28 * scale, 78 * scale);
+      ctx.fillStyle = palette.leaf;
+      ctx.fillRect(x - 42 * scale, y + 42 * scale, 78 * scale, 15 * scale);
+      ctx.fillRect(x + 18 * scale, y + 34 * scale, 88 * scale, 16 * scale);
+      ctx.fillRect(x - 12 * scale, y + 14 * scale, 74 * scale, 14 * scale);
+    };
+
     const drawBackground = () => {
-      const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, palette.sky);
-      grad.addColorStop(0.55, palette.sky2);
-      grad.addColorStop(1, "#0d1817");
-      ctx.fillStyle = grad;
+      ctx.fillStyle = palette.sky;
       ctx.fillRect(0, 0, W, H);
-      [0.18, 0.35, 0.62].forEach((rate, layer) => {
-        ctx.fillStyle = layer === 0 ? "#0e1827" : layer === 1 ? "#17283a" : "#20372f";
-        for (let x = -160; x < W + 260; x += 170) {
-          const sx = x - (scroll * rate) % 170;
+      ctx.fillStyle = palette.sky2;
+      ctx.fillRect(0, 262, W, 170);
+      for (let x = -120; x < W + 180; x += 112) {
+        const sx = x - (scroll * 0.22) % 112;
+        drawBlock(sx, 230, 72, 18, "#244c49", "#142a30");
+        drawBlock(sx + 42, 202, 44, 28, "#244c49", "#142a30");
+      }
+      [0.32, 0.56, 0.84].forEach((rate, layer) => {
+        const base = 384 - layer * 48;
+        ctx.fillStyle = layer === 0 ? "#16251e" : layer === 1 ? "#1e3a29" : "#244d2d";
+        for (let x = -160; x < W + 260; x += 150) {
+          const sx = x - (scroll * rate) % 150;
           ctx.beginPath();
-          ctx.moveTo(sx, 380 - layer * 56);
-          ctx.lineTo(sx + 86, 250 - layer * 42);
-          ctx.lineTo(sx + 178, 380 - layer * 56);
+          ctx.moveTo(sx, base);
+          ctx.lineTo(sx + 74, base - 106 + layer * 16);
+          ctx.lineTo(sx + 156, base);
           ctx.closePath();
           ctx.fill();
         }
       });
-      for (let x = -80; x < W + 120; x += 96) {
-        const sx = x - (scroll * 0.8) % 96;
-        ctx.fillStyle = "#15251f";
-        ctx.fillRect(sx + 28, 260, 16, 174);
-        ctx.fillRect(sx + 6, 304, 62, 12);
-        ctx.fillRect(sx + 16, 346, 48, 10);
+      for (let x = -100; x < W + 180; x += 130) {
+        drawPalm(x - (scroll * 0.72) % 130, 228 + (x % 2) * 12, 1);
       }
-      ctx.fillStyle = palette.ground;
-      ctx.fillRect(0, GROUND, W, H - GROUND);
-      ctx.fillStyle = palette.groundDark;
-      for (let x = -40; x < W + 60; x += 44) {
-        const sx = x - (scroll % 44);
-        ctx.fillRect(sx, GROUND, 36, 14);
-        ctx.fillRect(sx + 10, GROUND + 42, 24, 10);
+      for (let x = -70; x < W + 100; x += 48) {
+        const sx = x - (scroll % 48);
+        drawBlock(sx, GROUND - 8, 46, 16, "#795b2f", "#2a1d18");
+        ctx.fillStyle = x % 96 === 0 ? "#9a713c" : palette.ground;
+        ctx.fillRect(sx + 4, GROUND + 14, 40, 28);
+        ctx.fillStyle = palette.groundDark;
+        ctx.fillRect(sx + 8, GROUND + 44, 32, 16);
       }
-      ctx.fillStyle = "#506241";
-      ctx.fillRect(0, GROUND - 10, W, 10);
+      ctx.fillStyle = "#22321f";
+      ctx.fillRect(0, GROUND + 60, W, H - GROUND - 60);
+      for (let x = 1220; x < 1600; x += 34) {
+        const sx = x - scroll;
+        ctx.fillStyle = "#6b4123";
+        ctx.fillRect(sx, GROUND - 12, 24, 18);
+        ctx.fillStyle = "#2f1c12";
+        ctx.fillRect(sx + 8, GROUND + 6, 8, 54);
+      }
+      for (let x = 2760; x < 3820; x += 64) {
+        const sx = x - scroll;
+        drawBlock(sx, 280, 58, 152, "#314049", "#111820");
+        ctx.fillStyle = "#6b7780";
+        ctx.fillRect(sx + 8, 294, 16, 16);
+        ctx.fillRect(sx + 34, 330, 16, 16);
+      }
+      for (let y = 0; y < H; y += 4) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
+        ctx.fillRect(0, y, W, 1);
+      }
     };
 
     const drawPlayer = () => {
@@ -379,21 +426,27 @@ export default function Home() {
       ctx.save();
       ctx.translate(px + player.w / 2, py);
       ctx.scale(player.facing, 1);
-      ctx.fillStyle = "#1b201e";
-      ctx.fillRect(-12, player.h - 8, 24, 8);
-      ctx.fillStyle = palette.neon;
-      ctx.fillRect(-11, 6, 22, player.crouch ? 18 : 26);
-      ctx.fillStyle = "#d5c38b";
+      ctx.fillStyle = "#10141a";
+      ctx.fillRect(-15, player.h - 5, 30, 5);
+      ctx.fillStyle = palette.skin;
       ctx.fillRect(-8, -4, 16, 12);
+      ctx.fillStyle = "#3d221b";
+      ctx.fillRect(-10, -8, 20, 7);
       ctx.fillStyle = palette.red;
-      ctx.fillRect(-10, 2, 20, 5);
-      ctx.fillStyle = palette.blue;
-      ctx.fillRect(10, player.crouch ? 16 : 20, 30, 6);
-      ctx.fillStyle = "#d6f4ff";
-      ctx.fillRect(36, player.crouch ? 18 : 22, 8, 4);
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(-13, player.h - 18, 9, 18);
+      ctx.fillRect(-11, 0, 22, 4);
+      ctx.fillStyle = "#24463a";
+      ctx.fillRect(-13, 8, 26, player.crouch ? 15 : 24);
+      ctx.fillStyle = palette.neon;
+      ctx.fillRect(-9, 10, 18, player.crouch ? 10 : 16);
+      ctx.fillStyle = "#1c2c24";
+      ctx.fillRect(-15, player.h - 18, 9, 18);
       ctx.fillRect(5, player.h - 18, 9, 18);
+      ctx.fillStyle = palette.amber;
+      ctx.fillRect(11, player.crouch ? 17 : 20, 12, 5);
+      ctx.fillStyle = "#cfdab0";
+      ctx.fillRect(22, player.crouch ? 18 : 21, 28, 4);
+      ctx.fillStyle = palette.red;
+      ctx.fillRect(48, player.crouch ? 17 : 20, 8, 6);
       ctx.restore();
     };
 
@@ -404,43 +457,56 @@ export default function Home() {
       ctx.save();
       ctx.translate(x, e.y);
       if (e.type === "runner") {
-        ctx.fillStyle = "#55282d";
-        ctx.fillRect(4, 8, 22, 26);
-        ctx.fillStyle = "#e6a077";
-        ctx.fillRect(8, 0, 14, 10);
+        ctx.scale(e.dir < 0 ? 1 : -1, 1);
+        ctx.fillStyle = "#10141a";
+        ctx.fillRect(1, 38, 28, 4);
+        ctx.fillStyle = "#5d2d24";
+        ctx.fillRect(4, 11, 22, 23);
+        ctx.fillStyle = palette.skin;
+        ctx.fillRect(8, 0, 14, 11);
+        ctx.fillStyle = "#273023";
+        ctx.fillRect(6, 6, 18, 5);
         ctx.fillStyle = palette.amber;
-        ctx.fillRect(e.dir < 0 ? -16 : 24, 18, 18, 5);
-        ctx.fillStyle = "#111";
-        ctx.fillRect(5, 33, 7, 8);
-        ctx.fillRect(18, 33, 7, 8);
+        ctx.fillRect(-18, 19, 25, 5);
+        ctx.fillStyle = "#171a17";
+        ctx.fillRect(5, 33, 7, 9);
+        ctx.fillRect(18, 33, 7, 9);
       } else if (e.type === "turret") {
-        ctx.fillStyle = "#514232";
-        ctx.fillRect(0, 10, 36, 24);
+        drawBlock(0, 8, 42, 24, "#354045", "#0c1115");
+        ctx.fillStyle = "#111820";
+        ctx.fillRect(6, 0, 30, 12);
         ctx.fillStyle = palette.red;
-        ctx.fillRect(-18, 16, 22, 6);
-        ctx.fillStyle = "#161a1f";
-        ctx.fillRect(4, 0, 28, 14);
-      } else if (e.type === "drone") {
-        ctx.fillStyle = "#271f38";
-        ctx.fillRect(0, 6, 34, 14);
-        ctx.fillStyle = palette.blue;
-        ctx.fillRect(8, 10, 18, 5);
-        ctx.fillStyle = "#9bf6ff";
-        ctx.fillRect(-10, 0, 12, 5);
-        ctx.fillRect(32, 0, 12, 5);
-      } else {
-        ctx.fillStyle = "#30203c";
-        ctx.fillRect(0, 0, 118, 124);
-        ctx.fillStyle = "#4f2d58";
-        ctx.fillRect(12, 18, 92, 82);
-        ctx.fillStyle = palette.red;
-        ctx.fillRect(-26, 42, 40, 13);
-        ctx.fillRect(100, 42, 40, 13);
+        ctx.fillRect(-26, 16, 28, 6);
         ctx.fillStyle = palette.amber;
-        ctx.fillRect(38, 34, 42, 28);
+        ctx.fillRect(13, 15, 16, 8);
+      } else if (e.type === "drone") {
+        ctx.fillStyle = "#111820";
+        ctx.fillRect(0, 7, 34, 14);
+        ctx.fillStyle = "#67502a";
+        ctx.fillRect(5, 4, 24, 18);
+        ctx.fillStyle = palette.blue;
+        ctx.fillRect(10, 10, 14, 5);
+        ctx.fillStyle = palette.white;
+        ctx.fillRect(-14, 2, 14, 4);
+        ctx.fillRect(34, 2, 14, 4);
+      } else {
+        drawBlock(0, 0, 126, 132, "#30383d", "#0b1118");
+        ctx.fillStyle = "#17212a";
+        ctx.fillRect(14, 14, 98, 104);
+        ctx.fillStyle = "#52606a";
+        for (let yy = 18; yy < 112; yy += 24) {
+          ctx.fillRect(20, yy, 86, 8);
+        }
+        ctx.fillStyle = palette.red;
+        ctx.fillRect(-30, 48, 46, 12);
+        ctx.fillRect(110, 48, 46, 12);
+        ctx.fillStyle = palette.amber;
+        ctx.fillRect(39, 38, 48, 34);
         ctx.fillStyle = palette.ink;
-        ctx.fillRect(48, 43, 8, 8);
-        ctx.fillRect(65, 43, 8, 8);
+        ctx.fillRect(50, 48, 8, 8);
+        ctx.fillRect(68, 48, 8, 8);
+        ctx.fillStyle = "#f27a3d";
+        ctx.fillRect(56, 62, 24, 8);
       }
       ctx.restore();
     };
@@ -455,10 +521,10 @@ export default function Home() {
       pickups.forEach((p) => {
         if (p.taken) return;
         const x = p.x - scroll;
+        drawBlock(x - 16, p.y - 16, 32, 26, "#2d3b38", palette.ink);
         ctx.fillStyle = p.kind === "heart" ? palette.red : p.kind === "rapid" ? palette.blue : palette.amber;
-        ctx.fillRect(x - 14, p.y - 14, 28, 28);
-        ctx.fillStyle = palette.ink;
-        drawPixelText(p.kind === "heart" ? "+" : p.kind === "rapid" ? "M" : "S", x - 7, p.y + 6, 18, palette.ink);
+        ctx.fillRect(x - 11, p.y - 11, 22, 16);
+        drawPixelText(p.kind === "heart" ? "+" : p.kind === "rapid" ? "M" : "S", x - 7, p.y + 4, 16, palette.ink);
       });
       enemies.forEach(drawEnemy);
       drawPlayer();
@@ -482,7 +548,7 @@ export default function Home() {
         ctx.fillStyle = "#1b1118";
         ctx.fillRect(288, 496, 384, 16);
         ctx.fillStyle = palette.red;
-        ctx.fillRect(292, 500, Math.max(0, (boss.hp / 28) * 376), 8);
+        ctx.fillRect(292, 500, Math.max(0, (boss.hp / 32) * 376), 8);
         drawPixelText("CORE", 230, 512, 16, palette.red);
       }
       if (messageTimer > 0 || player.won) {
@@ -542,7 +608,7 @@ export default function Home() {
       <section className="game-stage" aria-label="Iron Jungle Assault arcade game">
         <div className="cabinet-top">
           <div>
-            <p className="eyebrow">ORIGINAL WEB ARCADE</p>
+            <p className="eyebrow">8-BIT RUN AND GUN</p>
             <h1>Iron Jungle Assault</h1>
           </div>
           <div className="status">
@@ -594,7 +660,7 @@ export default function Home() {
       <aside className="brief-panel">
         <h2>操作</h2>
         <p>键盘：A/D 或方向键移动，W/↑ 瞄准上方，S/↓ 蹲下，Space/J 跳跃，K/L 射击。</p>
-        <p>移动端：使用下方虚拟方向键与射击键。拾取 S 是散弹，M 是高速连射，+ 恢复生命。</p>
+        <p>移动端：使用下方虚拟方向键与射击键。拾取 S 是散弹，M 是高速连射，+ 恢复生命。画面素材是原创 8-bit 风格，参考经典横版跑枪的节奏与色彩。</p>
       </aside>
     </main>
   );
