@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Iron Jungle Assault",
-  description: "An original retro run-and-gun web arcade game.",
+  title: "魂斗罗网页版",
+  description: "使用本地像素素材重构的 FC 横版射击第一关试玩版。",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
