@@ -53,5 +53,18 @@
       "像素游戏"
     ],
     "excerpt": "复刻 FC 魂斗罗第一关的网页版横版射击游戏，包含河滩、断桥、峡谷、炮台区域与堡垒 BOSS 战。"
+  },
+  {
+    "slug": "terraform-alicloud-singbox-vpn",
+    "title": "Mac 端用 Terraform 申请阿里云抢占式 ECS 并搭建 Sing-box",
+    "date": "2026-07-18",
+    "tags": [
+      "Terraform",
+      "阿里云",
+      "ECS",
+      "Sing-box",
+      "Mac"
+    ],
+    "excerpt": "一篇从 Mac 终端出发的 Terraform 实战文档：自动创建阿里云抢占式 ECS、VPC、安全组和 SSH KeyPair，并通过 user_data 部署 Sing-box。"
   }
 ]
