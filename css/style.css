@@ -704,6 +704,30 @@ img { max-width: 100%; height: auto; border-radius: var(--radius); }
 
 .post-content a { word-break: break-word; }
 
+.contra-game-shell {
+  width: min(100%, 980px);
+  margin: 1.2em auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #050805;
+}
+
+.contra-game-frame {
+  display: block;
+  width: 100%;
+  min-height: min(765px, 86vh);
+  aspect-ratio: 816 / 765;
+  border: 0;
+  background: #050805;
+}
+
+@media (max-width: 720px) {
+  .contra-game-frame {
+    min-height: 72vh;
+  }
+}
+
 /* ============================================================
    ABOUT PAGE
    ============================================================ */
