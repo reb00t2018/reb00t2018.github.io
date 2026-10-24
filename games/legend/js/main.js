@@ -143,7 +143,7 @@ function playMusic(){if(musicAllowed&&bgm.getAttribute('src'))bgm.play().then(mu
 $('music-btn').onclick=()=>{musicAllowed=bgm.paused;if(musicAllowed)playMusic();else bgm.pause();localStorage.setItem('legend_music',musicAllowed?'on':'off');musicLabel()};$('volume').oninput=()=>{bgm.volume=Number($('volume').value)/100;localStorage.setItem('legend_volume',String(bgm.volume))};bgm.onplay=musicLabel;bgm.onpause=musicLabel;bgm.onerror=()=>status('音乐读取失败，请刷新重试');musicLabel();
 async function loadRegion(){if(!me)return;const epoch=sceneEpoch,mapID=me.map_id;const x=Math.max(0,Math.floor((me.x-24)/16)*16),y=Math.max(0,Math.floor((me.y-24)/16)*16),key=x+','+y;if(regionCache.has(key))return;regionCache.add(key);try{const r=await fetch(`/api/map?map_id=${mapID}&x=${x}&y=${y}&w=64&h=64`);if(!r.ok)throw Error('地图读取失败');const d=await r.json();if(epoch!==sceneEpoch)return;for(const c of d.cells)mapCache.set(`${c.x},${c.y}`,c);redraw()}catch(e){status(e.message+'，刷新重试')}}
 const libMeta=new Map();
-function metaFor(lib){if(!libMeta.has(lib))libMeta.set(lib,fetchAsset(`/assets/${lib}/meta.json`).then(r=>{if(!r.ok)throw Error();return r.json()}));return libMeta.get(lib)}
+function metaFor(lib){if(!libMeta.has(lib))libMeta.set(lib,fetchAsset(`/assets/${lib}/meta.json?v=all2`).then(r=>{if(!r.ok)throw Error();return r.json()}));return libMeta.get(lib)}
 function sprite(lib,index){if(index<0)return null;const key=`${lib}/${index}`;if(spriteCache.has(key))return spriteCache.get(key);const f={ready:false};spriteCache.set(key,f);
  const meta=ASSET_MANIFEST?metaFor(lib).then(m=>{const v=m[index];if(!v)throw Error('metadata missing');return v}):fetchAsset(`/assets/${key}.json`).then(r=>{if(!r.ok)throw Error();return r.json()});
  Promise.all([meta,new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,`/assets/${key}.png`,reject)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});redraw()}).catch(()=>{f.failed=true});return f;
@@ -586,8 +586,8 @@ const SKILL_FX={
  big_fireball:{type:'projectile',base:0,impact:bigImpact,travel:420,scale:1.6},
  heal:{type:'self',frames:SEQ(250,269),scale:1.05},
  mass_heal:{type:'self',frames:SEQ(250,269),scale:1.15},
- thunder:{type:'target',frames:SEQ(950,979),scale:1.2},
- hell_lightning:{type:'target',frames:SEQ(950,979),scale:1.35},
+ thunder:{type:'target',frames:[950,951,952,953,954,955,970,971,972,973,974,975],scale:1.2},
+ hell_lightning:{type:'target',frames:[950,951,952,953,954,955,970,971,972,973,974,975],scale:1.35},
  poison:{type:'target',frames:SEQ(200,209),scale:1},
  hellfire:{type:'target',frames:SEQ(760,779),scale:1.1},
  soul_fireball:{type:'target',frames:SEQ(370,379),scale:1.1},
@@ -595,16 +595,16 @@ const SKILL_FX={
  explosion:{type:'target',frames:fireImpact,scale:1.35},
  fire_wall:{type:'target',frames:fireImpact,scale:1.2},
  meteor:{type:'target',frames:fireImpact,scale:1.8},
- laser:{type:'target',frames:SEQ(800,825),scale:1.2},
+ laser:{type:'target',frames:SEQ(800,805),scale:1.2},
  ice_storm:{type:'target',frames:SEQ(880,889),scale:1.4},
  fire_sword:{type:'target',frames:bigImpact,scale:1.3},
  magic_shield:{type:'self',frames:SEQ(880,889),scale:1.1},
  ghost_shield:{type:'self',frames:SEQ(880,889),scale:1.1},
- holy_armor:{type:'self',frames:SEQ(600,619),scale:1.1},
- invisibility:{type:'self',frames:SEQ(600,619),scale:1},
- summon:{type:'self',frames:SEQ(600,619),scale:1.15},
- teleport:{type:'self',frames:SEQ(600,619),scale:1},
- trap:{type:'target',frames:SEQ(600,619),scale:1},
+ holy_armor:{type:'self',frames:SEQ(601,619),scale:1.1},
+ invisibility:{type:'self',frames:SEQ(601,619),scale:1},
+ summon:{type:'self',frames:SEQ(601,619),scale:1.15},
+ teleport:{type:'self',frames:SEQ(601,619),scale:1},
+ trap:{type:'target',frames:SEQ(601,619),scale:1},
  slash:{type:'slash'}
 };
 function magicDir(dx,dy){let a=Math.atan2(dy,dx)+Math.PI/2;if(a<0)a+=Math.PI*2;return Math.round(a/(Math.PI/8))%16}
