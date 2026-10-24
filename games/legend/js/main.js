@@ -106,7 +106,7 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
   if(m.op==='welcome'){me=m.data;$('classic-hud').hidden=false;document.body.classList.add('in-game');players.set(me.id,me);$('game-screen').style.display='block';$('login-screen').style.display='none';$('game-actions').hidden=false;status();loadRegion();hud();updateMapMusic();log('系统',`${me.name}来到${currentScene.name}。打开背包，准备好衣服与木剑。`)}
   if(m.op==='players'){for(const p of m.data)applyPlayer(p,false)}
   if(m.op==='monsters')updateMonsters(m.data);
-  if(m.op==='combat')receiveCombat(m.data);if(m.op==='rankings')receiveRankings(m.data);if(m.op==='skill_effect'){const p=m.data.player;addSkillEffect('heal',p.x,p.y,p.x,p.y)}
+  if(m.op==='combat')receiveCombat(m.data);if(m.op==='rankings')receiveRankings(m.data);if(m.op==='skill_effect'){const p=m.data.player;addSkillEffect(m.data.skill||'heal',p.x,p.y,p.x,p.y)}
   if(m.op==='npcs'){npcs=m.data;hud()}
   if(m.op==='join')applyPlayer(m.data,false);
   if(m.op==='move'||m.op==='inventory'){applyPlayer(m.data);if(m.data.id===me?.id){if(m.op==='inventory'){equipPending=false;if(bagPending){status(bagPending==='sort'?'背包已按类别整理并保存':'所选物品已销毁');bagPending='';bagSelection.clear();discardIds=[];bagMulti=false;}renderBag();if($('growth-dialog').open)renderGrowth();status('背包与装备已保存')}}}
@@ -496,7 +496,7 @@ function renderGrowth(){if(!me)return;const dialog=$('growth-dialog'),box=$('gro
  if(growthTab==='skills'){const all=me.skills||[],sk=all.find(v=>v.id===selectedSkillId)||all[0];if(!sk)return;selectedSkillId=sk.id;const panel=document.createElement('div');panel.className='skill-book-panel';const close=growthButton('关闭',()=>dialog.close());close.className='panel-close';close.setAttribute('aria-label','关闭技能书');panel.appendChild(close);const scroll=document.createElement('img');scroll.className='skill-scroll';setImage(scroll,'/assets/Items/261.png');scroll.alt='客户端卷轴素材';panel.appendChild(scroll);const tabs=document.createElement('div');tabs.className='skill-tabs';for(const row of all){const b=growthButton(row.name+' · '+(row.rank?'技能 '+row.rank+' 级':'未学习'),()=>{selectedSkillId=row.id;renderGrowth()});b.classList.toggle('selected',row.id===sk.id);tabs.appendChild(b)}panel.appendChild(tabs);const detail=document.createElement('div');detail.className='skill-detail';const title=document.createElement('strong');title.textContent=sk.name+' · '+(sk.rank?'熟练度 '+sk.practice+'/60':'技能书 '+sk.books+' 本');detail.appendChild(title);const info=document.createElement('p');info.textContent='要求 Lv.'+sk.required_level+' · '+(sk.passive?'被动生效':'消耗 '+sk.mp+' MP · '+(sk.range?'距离 '+sk.range:'自身治疗'));detail.appendChild(info);const actions=document.createElement('div');actions.className='actions';actions.appendChild(growthButton('购买技能书 · '+sk.price+' 金币',()=>send('buy_book',{skill_id:sk.id}),!!sk.rank||sk.books>0));actions.appendChild(growthButton('学习',()=>send('learn',{skill_id:sk.id}),!!sk.rank||!sk.books||me.level<sk.required_level));if(sk.rank){actions.appendChild(growthButton(me.training===sk.id?'停止练功':'自动练功',()=>send('train',{skill_id:me.training===sk.id?'':sk.id}),sk.rank>=3));if(!sk.passive)actions.appendChild(growthButton('施放',()=>{dialog.close();castSkill(sk.id)}))}detail.appendChild(actions);panel.appendChild(detail);box.appendChild(panel);const help=document.createElement('p');help.className='skill-book-help';help.textContent='靠近向导、武馆教头或书店可购买与练功。F1–F8 或数字 1–8 施放快捷栏中的主动技能；移动、战斗或离线会停止练功。';box.appendChild(help);return}
  renderCharacter(box);
 }
-function castSkill(id){if(!me||me.dead)return;const sk=me.skills?.find(s=>s.id===id);if(!sk?.rank||sk.passive){status('该技能未学习或为被动技能');return}let target=null;if(id!=='heal'){target=monsters.get(attackTarget)||[...monsters.values()].filter(m=>m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=sk.range).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];if(!target){status('施法范围内没有目标');return}}stopActions();send('cast',{skill_id:id,target_id:target?.id||0})}
+function castSkill(id){if(!me||me.dead)return;const sk=me.skills?.find(s=>s.id===id);if(!sk?.rank||sk.passive){status('该技能未学习或为被动技能');return}let target=null;if(sk.kind==='damage'){target=monsters.get(attackTarget)||[...monsters.values()].filter(m=>m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=sk.range).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];if(!target){status('施法范围内没有目标');return}}stopActions();send('cast',{skill_id:id,target_id:target?.id||0})}
 
 let characterTab='equipment',selectedEquipmentSlot='';
 const equipmentLayout=[['weapon','武器',39,60,'weapon'],['armor','衣服',85,60,'armor'],['helmet','头盔',177,60,null],['necklace','项链',177,101,'necklace'],['charm','勋章',177,142,null],['bracelet_left','左手镯',39,183,'bracelet'],['bracelet_right','右手镯',177,183,'bracelet'],['ring_left','左戒指',39,224,'ring'],['ring_right','右戒指',177,224,'ring'],['stone','宝石',39,266,null],['belt','腰带',85,266,null],['boots','靴子',131,266,null],['seal','印记',177,266,null]];
@@ -580,14 +580,40 @@ $('inventory-dialog').addEventListener('close',()=>{bagRepairNPC=null;bagRepairM
 function activeSkills(){return (me?.skills||[]).filter(s=>!s.passive).slice(0,8)}
 function magicDir(dx,dy){let a=Math.atan2(dy,dx)+Math.PI/2;if(a<0)a+=Math.PI*2;return Math.round(a/(Math.PI/8))%16}
 const fireImpact=[900,901,902,903,904,905,920,921,922,923,924,925,926,927,928,929,930,931,932,933,934,935],bigImpact=[400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,420,421,422,423,424,425,430,431,432,433,434,435];
+const SEQ=(a,b)=>{const r=[];for(let i=a;i<=b;i++)r.push(i);return r};
+const SKILL_FX={
+ fireball:{type:'projectile',base:0,impact:fireImpact,travel:360,scale:1},
+ big_fireball:{type:'projectile',base:0,impact:bigImpact,travel:420,scale:1.6},
+ heal:{type:'self',frames:SEQ(250,269),scale:1.05},
+ mass_heal:{type:'self',frames:SEQ(250,269),scale:1.15},
+ thunder:{type:'target',frames:SEQ(950,979),scale:1.2},
+ hell_lightning:{type:'target',frames:SEQ(950,979),scale:1.35},
+ poison:{type:'target',frames:SEQ(200,209),scale:1},
+ hellfire:{type:'target',frames:SEQ(760,779),scale:1.1},
+ soul_fireball:{type:'target',frames:SEQ(370,379),scale:1.1},
+ repulsion:{type:'self',frames:SEQ(800,805),scale:1.2},
+ explosion:{type:'target',frames:fireImpact,scale:1.35},
+ fire_wall:{type:'target',frames:fireImpact,scale:1.2},
+ meteor:{type:'target',frames:fireImpact,scale:1.8},
+ laser:{type:'target',frames:SEQ(800,825),scale:1.2},
+ ice_storm:{type:'target',frames:SEQ(880,889),scale:1.4},
+ fire_sword:{type:'target',frames:bigImpact,scale:1.3},
+ magic_shield:{type:'self',frames:SEQ(880,889),scale:1.1},
+ ghost_shield:{type:'self',frames:SEQ(880,889),scale:1.1},
+ holy_armor:{type:'self',frames:SEQ(600,619),scale:1.1},
+ invisibility:{type:'self',frames:SEQ(600,619),scale:1},
+ summon:{type:'self',frames:SEQ(600,619),scale:1.15},
+ teleport:{type:'self',frames:SEQ(600,619),scale:1},
+ trap:{type:'target',frames:SEQ(600,619),scale:1},
+ slash:{type:'slash'}
+};
+function magicDir(dx,dy){let a=Math.atan2(dy,dx)+Math.PI/2;if(a<0)a+=Math.PI*2;return Math.round(a/(Math.PI/8))%16}
 function addSkillEffect(kind,x,y,tx,ty){
- const dir=magicDir(tx-x,ty-y),now=performance.now();
- const e={kind,x,y,tx,ty,dir,start:now};
+ const spec=SKILL_FX[kind]||SKILL_FX.slash,now=performance.now(),e={kind,spec,x,y,tx,ty,start:now,dir:magicDir(tx-x,ty-y)};
  skillEffects.push(e);
- if(kind==='fireball'||kind==='big_fireball'){
-  for(let i=0;i<6;i++)sprite('Magic',dir*10+i);
-  for(const idx of (kind==='big_fireball'?bigImpact:fireImpact))sprite('Magic',idx);
- }else if(kind==='heal')for(let i=250;i<=269;i++)sprite('Magic',i);
+ if(spec.frames)for(const idx of spec.frames)sprite('Magic',idx);
+ if(spec.impact)for(const idx of spec.impact)sprite('Magic',idx);
+ if(spec.type==='projectile')for(let i=0;i<6;i++)sprite('Magic',e.dir*10+i);
 }
 function drawMagic(index,x,y,scale=1){
  const f=sprite('Magic',index);if(!f?.ready)return;
@@ -597,23 +623,19 @@ function drawMagic(index,x,y,scale=1){
 }
 function drawSkillEffects(now,cx,cy){
  for(let i=skillEffects.length-1;i>=0;i--){
-  const e=skillEffects[i],duration=e.kind==='heal'?760:(e.kind==='big_fireball'?900:820),t=(now-e.start)/duration;
+  const e=skillEffects[i],spec=e.spec,duration=spec.type==='projectile'?820:700,t=(now-e.start)/duration;
   if(t>=1){skillEffects.splice(i,1);continue}
   const sx=e.x*TW-cx+24,sy=e.y*TH-cy,tx=e.tx*TW-cx+24,ty=e.ty*TH-cy;
-  if(e.kind==='heal'){
-   const f=Math.min(19,Math.floor(t*20));
-   drawMagic(250+f,sx,sy,1.05);
-  }else if(e.kind==='fireball'||e.kind==='big_fireball'){
-   const big=e.kind==='big_fireball',travel=big?420:360,split=travel/(travel+(big?480:360));
-   if(t<split){
-    const k=t/split,px=sx+(tx-sx)*k,py=sy+(ty-sy)*k,frame=e.dir*10+Math.min(5,Math.floor(k*6));
-    drawMagic(frame,px,py,big?1.6:1);
-   }else{
-    const seq=big?bigImpact:fireImpact,k=(t-split)/(1-split),f=seq[Math.min(seq.length-1,Math.floor(k*seq.length))];
-    drawMagic(f,tx,ty,big?1.8:1.35);
-   }
+  if(spec.type==='projectile'){
+   const split=spec.travel/(spec.travel+360);
+   if(t<split){const k=t/split,px=sx+(tx-sx)*k,py=sy+(ty-sy)*k,f=e.dir*10+Math.min(5,Math.floor(k*6));drawMagic(f,px,py,spec.scale||1)}
+   else{const k=(t-split)/(1-split),f=spec.impact[Math.min(spec.impact.length-1,Math.floor(k*spec.impact.length))];drawMagic(f,tx,ty,(spec.scale||1)*1.3)}
+  }else if(spec.type==='target'){
+   const f=spec.frames[Math.min(spec.frames.length-1,Math.floor(t*spec.frames.length))];drawMagic(f,tx,ty,spec.scale||1);
+  }else if(spec.type==='self'){
+   const f=spec.frames[Math.min(spec.frames.length-1,Math.floor(t*spec.frames.length))];drawMagic(f,sx,sy,spec.scale||1);
   }else{
-   const k=Math.min(1,t*2.2);ctx.save();ctx.globalAlpha=1-t;ctx.strokeStyle='#fff0a8';ctx.lineWidth=5*(1-t)+1;ctx.beginPath();ctx.arc(tx,ty,24+k*15,-2+k*2,1+k*2);ctx.stroke();ctx.restore();
+   ctx.save();ctx.globalAlpha=1-t;ctx.strokeStyle='#fff0a8';ctx.lineWidth=5*(1-t)+1;ctx.beginPath();ctx.arc(tx,ty,24+t*15,-2+t*2,1+t*2);ctx.stroke();ctx.restore();
   }
  }
 }
