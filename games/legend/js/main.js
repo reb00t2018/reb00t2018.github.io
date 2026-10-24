@@ -364,8 +364,8 @@ function changeScene(scene){
 }
 function updateMapMusic(){if(!me)return;const city=me.map_id===0&&Math.abs(me.x-343)+Math.abs(me.y-245)<=145;const town=me.map_id===3;const room=[102,103,108,109].includes(me.map_id);setMusic(city||town||room?null:('music' in currentScene?currentScene.music:'/audio/field2.wav'))}
 $('death-dialog').oncancel=e=>e.preventDefault();$('revive-btn').onclick=()=>send('revive');
-$('travel-btn').onclick=()=>{if(!me||me.dead)return;stopActions();for(const b of document.querySelectorAll('[data-map]'))b.disabled=Number(b.dataset.map)===me.map_id;$('travel-dialog').showModal()};
-$('close-travel').onclick=()=>$('travel-dialog').close();document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{if(send('travel',{map_id:Number(b.dataset.map)})){$('travel-dialog').close();status('正在传送…')}});
+$('travel-btn').onclick=()=>{if(!me||me.dead)return;stopActions();for(const b of document.querySelectorAll('[data-map]')){const need=Number(b.dataset.minLevel||0);b.disabled=Number(b.dataset.map)===me.map_id||(!!need&&me.level<need);b.title=need&&me.level<need?'需要 '+need+' 级':''}$('travel-dialog').showModal()};
+$('close-travel').onclick=()=>$('travel-dialog').close();document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{const need=Number(b.dataset.minLevel||0);if(need&&me&&me.level<need){status('需要 '+need+' 级才能进入');return}if(send('travel',{map_id:Number(b.dataset.map)})){$('travel-dialog').close();status('正在传送…')}});
 
 function updateDrops(rows){groundDrops.clear();for(const d of rows)groundDrops.set(d.id,d);if(pickupTarget&&!groundDrops.has(pickupTarget))pickupTarget=null}
 function choosePickup(id){if(!me||me.dead)return;stopActions();pickupTarget=id;nextInputAt=0;status('前往拾取物品');inputTick()}
