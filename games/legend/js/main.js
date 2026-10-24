@@ -577,7 +577,7 @@ function confirmBagRepair(){
 $('repair-back').onclick=()=>{if(merchantPending)return;const npc=bagRepairNPC;bagRepairNPC=null;bagRepairMessage='';$('inventory-dialog').close();if(npc)showDialogue(npc)};
 $('inventory-dialog').addEventListener('close',()=>{bagRepairNPC=null;bagRepairMessage='';$('equip-btn').removeAttribute('aria-label')});
 
-function activeSkills(){return (me?.skills||[]).filter(s=>!s.passive).slice(0,8)}
+function activeSkills(){return (me?.skills||[]).filter(s=>!s.passive&&s.rank>0).slice(0,8)}
 function magicDir(dx,dy){let a=Math.atan2(dy,dx)+Math.PI/2;if(a<0)a+=Math.PI*2;return Math.round(a/(Math.PI/8))%16}
 const fireImpact=[900,901,902,903,904,905,920,921,922,923,924,925,926,927,928,929,930,931,932,933,934,935],bigImpact=[400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,420,421,422,423,424,425,430,431,432,433,434,435];
 const SEQ=(a,b)=>{const r=[];for(let i=a;i<=b;i++)r.push(i);return r};
