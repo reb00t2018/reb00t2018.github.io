@@ -726,7 +726,9 @@ function addSkillEffect(kind,x,y,tx,ty){
 }
 function drawMagic(index,x,y,scale=1){
  const f=sprite('Magic',index);if(!f?.ready)return;
+ ctx.save();ctx.globalCompositeOperation='lighter';
  ctx.drawImage(f.im,Math.round(x+f.offsetX*scale),Math.round(y+f.offsetY*scale),Math.round(f.width*scale),Math.round(f.height*scale));
+ ctx.restore();
 }
 function drawSkillEffects(now,cx,cy){
  for(let i=skillEffects.length-1;i>=0;i--){
