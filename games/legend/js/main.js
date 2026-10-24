@@ -106,7 +106,7 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
   if(m.op==='welcome'){me=m.data;$('classic-hud').hidden=false;document.body.classList.add('in-game');players.set(me.id,me);$('game-screen').style.display='block';$('login-screen').style.display='none';$('game-actions').hidden=false;status();loadRegion();hud();updateMapMusic();log('系统',`${me.name}来到${currentScene.name}。打开背包，准备好衣服与木剑。`)}
   if(m.op==='players'){for(const p of m.data)applyPlayer(p,false)}
   if(m.op==='monsters')updateMonsters(m.data);
-  if(m.op==='combat')receiveCombat(m.data);if(m.op==='rankings')receiveRankings(m.data);if(m.op==='skill_effect'){const p=m.data.player;skillEffects.push({kind:'heal',x:p.x,y:p.y,tx:p.x,ty:p.y,start:performance.now()})}
+  if(m.op==='combat')receiveCombat(m.data);if(m.op==='rankings')receiveRankings(m.data);if(m.op==='skill_effect'){const p=m.data.player;addSkillEffect('heal',p.x,p.y,p.x,p.y)}
   if(m.op==='npcs'){npcs=m.data;hud()}
   if(m.op==='join')applyPlayer(m.data,false);
   if(m.op==='move'||m.op==='inventory'){applyPlayer(m.data);if(m.data.id===me?.id){if(m.op==='inventory'){equipPending=false;if(bagPending){status(bagPending==='sort'?'背包已按类别整理并保存':'所选物品已销毁');bagPending='';bagSelection.clear();discardIds=[];bagMulti=false;}renderBag();if($('growth-dialog').open)renderGrowth();status('背包与装备已保存')}}}
@@ -243,7 +243,7 @@ function updateTarget(){
  $('target-panel').classList.toggle('selected',!!m);
  $('monster-count').textContent=`附近生物 ${[...monsters.values()].filter(m=>m.hp>0&&me&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=16).length}`
 }
-function receiveCombat(c){if(c.skill_name){const p=players.get(c.attacker_id);if(p)skillEffects.push({kind:c.skill_name.includes('火')?'fire':'slash',x:p.x,y:p.y,tx:c.target_x,ty:c.target_y,start:performance.now()})}if(c.skill_name&&c.attacker_id===me?.id)log('技能',c.skill_name);
+function receiveCombat(c){if(c.skill_id==='fireball'||c.skill_id==='big_fireball'){const p=players.get(c.attacker_id)||me;if(p)addSkillEffect(c.skill_id,p.x,p.y,c.target_x,c.target_y)}else if(c.skill_name){const p=players.get(c.attacker_id);if(p)addSkillEffect('slash',p.x,p.y,c.target_x,c.target_y)}if(c.skill_name&&c.attacker_id===me?.id)log('技能',c.skill_name);
  const m=monsters.get(c.target_id);if(m||c.target_x!==undefined)damageLabels.push({x:m?.x??c.target_x,y:m?.y??c.target_y,text:`−${c.damage}`,start:performance.now(),color:'#ffb76f'});
  if(c.player)applyPlayer(c.player);
  const attacker=players.get(c.attacker_id);if(attacker&&me&&Math.max(Math.abs(attacker.x-me.x),Math.abs(attacker.y-me.y))<16){playSfx('swing');playMonsterSound(c.killed?c.sound_death:c.sound_hit,{x:c.target_x,y:c.target_y})}
@@ -578,12 +578,41 @@ $('repair-back').onclick=()=>{if(merchantPending)return;const npc=bagRepairNPC;b
 $('inventory-dialog').addEventListener('close',()=>{bagRepairNPC=null;bagRepairMessage='';$('equip-btn').removeAttribute('aria-label')});
 
 function activeSkills(){return (me?.skills||[]).filter(s=>!s.passive).slice(0,8)}
+function magicDir(dx,dy){let a=Math.atan2(dy,dx)+Math.PI/2;if(a<0)a+=Math.PI*2;return Math.round(a/(Math.PI/8))%16}
+const fireImpact=[900,901,902,903,904,905,920,921,922,923,924,925,926,927,928,929,930,931,932,933,934,935],bigImpact=[400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,420,421,422,423,424,425,430,431,432,433,434,435];
+function addSkillEffect(kind,x,y,tx,ty){
+ const dir=magicDir(tx-x,ty-y),now=performance.now();
+ const e={kind,x,y,tx,ty,dir,start:now};
+ skillEffects.push(e);
+ if(kind==='fireball'||kind==='big_fireball'){
+  for(let i=0;i<6;i++)sprite('Magic',dir*10+i);
+  for(const idx of (kind==='big_fireball'?bigImpact:fireImpact))sprite('Magic',idx);
+ }else if(kind==='heal')for(let i=250;i<=269;i++)sprite('Magic',i);
+}
+function drawMagic(index,x,y,scale=1){
+ const f=sprite('Magic',index);if(!f?.ready)return;
+ ctx.drawImage(f.im,Math.round(x+f.offsetX*scale),Math.round(y+f.offsetY*scale),Math.round(f.width*scale),Math.round(f.height*scale));
+}
 function drawSkillEffects(now,cx,cy){
- for(let i=skillEffects.length-1;i>=0;i--){const e=skillEffects[i],t=(now-e.start)/850;if(t>=1){skillEffects.splice(i,1);continue}ctx.save();ctx.globalAlpha=1-t;const x=e.x*TW-cx+24,y=e.y*TH-cy-32,tx=e.tx*TW-cx+24,ty=e.ty*TH-cy-32;
- if(e.kind==='fire'){const k=Math.min(1,t*2),px=x+(tx-x)*k,py=y+(ty-y)*k;const g=ctx.createRadialGradient(px,py,1,px,py,18);g.addColorStop(0,'#fffbd0');g.addColorStop(.35,'#ffa12b');g.addColorStop(1,'#f4360800');ctx.fillStyle=g;ctx.beginPath();ctx.arc(px,py,18,0,Math.PI*2);ctx.fill();if(k===1){ctx.strokeStyle='#ffbe49';ctx.lineWidth=3;ctx.beginPath();ctx.arc(tx,ty,8+t*30,0,Math.PI*2);ctx.stroke()}}
- else if(e.kind==='heal'){ctx.strokeStyle='#82ffc0';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(x,y+24,15+t*20,7+t*12,0,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#b2ffd2';for(let n=0;n<5;n++){const px=x+Math.sin(n*2+t*5)*20,py=y+20-t*65+n*5;ctx.fillRect(px-4,py,9,2);ctx.fillRect(px,py-4,2,9)}}
- else {ctx.strokeStyle='#fff0a8';ctx.lineWidth=5*(1-t)+1;ctx.beginPath();ctx.arc(tx,ty,24+t*15,-2+t*2,1+t*2);ctx.stroke()}
- ctx.restore();
+ for(let i=skillEffects.length-1;i>=0;i--){
+  const e=skillEffects[i],duration=e.kind==='heal'?760:(e.kind==='big_fireball'?900:820),t=(now-e.start)/duration;
+  if(t>=1){skillEffects.splice(i,1);continue}
+  const sx=e.x*TW-cx+24,sy=e.y*TH-cy,tx=e.tx*TW-cx+24,ty=e.ty*TH-cy;
+  if(e.kind==='heal'){
+   const f=Math.min(19,Math.floor(t*20));
+   drawMagic(250+f,sx,sy,1.05);
+  }else if(e.kind==='fireball'||e.kind==='big_fireball'){
+   const big=e.kind==='big_fireball',travel=big?420:360,split=travel/(travel+(big?480:360));
+   if(t<split){
+    const k=t/split,px=sx+(tx-sx)*k,py=sy+(ty-sy)*k,frame=e.dir*10+Math.min(5,Math.floor(k*6));
+    drawMagic(frame,px,py,big?1.6:1);
+   }else{
+    const seq=big?bigImpact:fireImpact,k=(t-split)/(1-split),f=seq[Math.min(seq.length-1,Math.floor(k*seq.length))];
+    drawMagic(f,tx,ty,big?1.8:1.35);
+   }
+  }else{
+   const k=Math.min(1,t*2.2);ctx.save();ctx.globalAlpha=1-t;ctx.strokeStyle='#fff0a8';ctx.lineWidth=5*(1-t)+1;ctx.beginPath();ctx.arc(tx,ty,24+k*15,-2+k*2,1+k*2);ctx.stroke();ctx.restore();
+  }
  }
 }
 $('pk-btn').onclick=()=>{if(me?.level<5){status('达到5级后开放自由PK');return}pkMode=!pkMode;$('pk-btn').textContent=pkMode?'自由PK：开':'和平模式';$('pk-btn').setAttribute('aria-pressed',String(pkMode));status(pkMode?'点击邻近玩家攻击；安全区、复活保护及5级以下玩家受保护':'已切回和平模式')};
@@ -611,5 +640,5 @@ function questPath(target){const start=me.x+','+me.y,open=[{x:me.x,y:me.y,g:0}],
  for(let n=0;open.length&&n<200000;n++){open.sort((a,b)=>(b.g+Math.max(Math.abs(b.x-target.x),Math.abs(b.y-target.y)))-(a.g+Math.max(Math.abs(a.x-target.x),Math.abs(a.y-target.y))));const p=open.pop(),key=p.x+','+p.y;if(closed.has(key))continue;closed.add(key);if(Math.max(Math.abs(p.x-target.x),Math.abs(p.y-target.y))<=1){end=key;break}for(let dir=0;dir<8;dir++){if(!canStep(p.x,p.y,dir))continue;const [dx,dy]=deltas[dir],x=p.x+dx,y=p.y+dy,k=x+','+y;if(portals.some(g=>g.x===x&&g.y===y)||npcs.some(g=>g.x===x&&g.y===y))continue;const g=p.g+1;if(g>=(best.get(k)??Infinity))continue;best.set(k,g);parent.set(k,key);open.push({x,y,g})}}
  if(end===null)return null;const path=[];for(let k=end;k!==start;k=parent.get(k)){if(!k)return null;path.push(k.split(',').map(Number))}return path.reverse();
 }
-function tickQuestRoute(){const q=questRoute;if(me.map_id!==q.map||me.dead){cancelQuestRoute();return}while(q.path.length&&q.path[0][0]===me.x&&q.path[0][1]===me.y)q.path.shift();if(!q.path.length){cancelQuestRoute();if(q.kind==='npc')send('talk',{npc_id:q.target.id});else status('已到达任务怪物附近，点击怪物或使用技能攻击');return}const [x,y]=q.path[0],dir=deltas.findIndex(([dx,dy])=>me.x+dx===x&&me.y+dy===y);if(dir<0||!canStep(me.x,me.y,dir)){cancelQuestRoute();status('路线发生变化，请重新寻路');return}requestMove(dir,false)}
+function tickQuestRoute(){const q=questRoute;if(me.map_id!==q.map||me.dead){cancelQuestRoute();return}while(q.path.length&&q.path[0][0]===me.x&&q.path[0][1]===me.y)q.path.shift();if(!q.path.length){cancelQuestRoute();if(q.kind==='npc')send('talk',{npc_id:q.target.id});else status('已到达任务怪物附近，点击怪物或使用技能攻击');return}const [x,y]=q.path[0],dir=deltas.findIndex(([dx,dy])=>me.x+dx===x&&me.y+dy===y);if(dir<0||!canStep(me.x,me.y,dir)){cancelQuestRoute();status('路线发生变化，请重新寻路');return}requestMove(dir,(q.path.length>1||runMode)&&canStep(me.x,me.y,dir))}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key))cancelQuestRoute()});
