@@ -598,6 +598,7 @@ const SKILL_FX={
  laser:{type:'target',frames:SEQ(800,805),scale:1.2},
  ice_storm:{type:'target',frames:SEQ(880,889),scale:1.4},
  fire_sword:{type:'target',frames:bigImpact,scale:1.3},
+ lion_roar:{type:'self',frames:SEQ(800,805),scale:1.4},
  magic_shield:{type:'self',frames:SEQ(880,889),scale:1.1},
  ghost_shield:{type:'self',frames:SEQ(880,889),scale:1.1},
  holy_armor:{type:'self',frames:SEQ(601,619),scale:1.1},
