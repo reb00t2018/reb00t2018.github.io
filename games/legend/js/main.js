@@ -37,6 +37,7 @@ window.fetch=async function(input,init={}){
  return res;
 };
 const $=id=>document.getElementById(id),canvas=$('canvas'),ctx=canvas.getContext('2d');
+const bgCanvas=document.createElement('canvas'),bgctx=bgCanvas.getContext('2d');let bgKey='',bgOriginX=0,bgOriginY=0;function invalidateBackground(){bgKey=''}
 const TW=48,TH=32,classes={warrior:'战士',wizard:'法师',taoist:'道士'};
 let bagMulti=false,bagPending='',discardIds=[];const bagSelection=new Set();
 let growthTab="quest",selectedSkillId=null;
@@ -48,7 +49,7 @@ for(const id of ['chat','chat-form','hint','game-actions'])$('classic-panel').ap
 $('attack-btn').textContent='攻击';$('talk-btn').textContent='交谈';$('switch-btn').textContent='选角';
 const players=new Map(),mapCache=new Map(),regionCache=new Set(),spriteCache=new Map();
 function status(text=''){$('status').textContent=text}
-function redraw(){if(!drawing){drawing=true;requestAnimationFrame(()=>{drawing=false;draw();if(me)redraw()})}}
+let frameLoop=false,lastFrame=0;const FRAME_MS=33;function redraw(){if(frameLoop)return;frameLoop=true;const tick=ts=>{if(!me){frameLoop=false;draw();return}if(ts-lastFrame>=FRAME_MS){lastFrame=ts;draw()}requestAnimationFrame(tick)};requestAnimationFrame(tick)}
 function log(name,text){const d=document.createElement('div');d.textContent=`[${name}] ${text}`;$('chat').appendChild(d);while($('chat').children.length>100)$('chat').firstChild.remove();$('chat').scrollTop=$('chat').scrollHeight}
 function send(op,extra={}){if(ws?.readyState===WebSocket.OPEN){ws.send(JSON.stringify({op,...extra}));return true}return false}
 function portrait(c){return {warrior:40,wizard:120,taoist:200}[c.class]+(c.gender==='female'?40:0)}
@@ -142,22 +143,30 @@ function musicLabel(){$('music-btn').textContent=!bgm.getAttribute('src')?'♫ �
 function setMusic(original){const local=localAssetURL(original),path=assetURL(original);if(!path){if(bgm.getAttribute('src')){bgm.pause();bgm.removeAttribute('src');bgm.load()}musicLabel();return}const next=new URL(path,location.href).href;if(bgm.src!==next){bgm.pause();bgm.src=path;bgm.dataset.local=local;bgm.onerror=()=>{if(path!==local&&bgm.getAttribute('src')!==local){bgm.src=local;bgm.load()}else status('音乐读取失败，请刷新重试')};bgm.load()}playMusic();musicLabel()}
 function playMusic(){if(musicAllowed&&bgm.getAttribute('src'))bgm.play().then(musicLabel).catch(()=>{musicLabel()})}
 $('music-btn').onclick=()=>{musicAllowed=bgm.paused;if(musicAllowed)playMusic();else bgm.pause();localStorage.setItem('legend_music',musicAllowed?'on':'off');musicLabel()};$('volume').oninput=()=>{bgm.volume=Number($('volume').value)/100;localStorage.setItem('legend_volume',String(bgm.volume))};bgm.onplay=musicLabel;bgm.onpause=musicLabel;bgm.onerror=()=>status('音乐读取失败，请刷新重试');musicLabel();
-async function loadRegion(){if(!me)return;const epoch=sceneEpoch,mapID=me.map_id;const x=Math.max(0,Math.floor((me.x-24)/16)*16),y=Math.max(0,Math.floor((me.y-24)/16)*16),key=x+','+y;if(regionCache.has(key))return;regionCache.add(key);try{const r=await fetch(`/api/map?map_id=${mapID}&x=${x}&y=${y}&w=64&h=64`);if(!r.ok)throw Error('地图读取失败');const d=await r.json();if(epoch!==sceneEpoch)return;for(const c of d.cells)mapCache.set(`${c.x},${c.y}`,c);redraw()}catch(e){status(e.message+'，刷新重试')}}
+async function loadRegion(){if(!me)return;const epoch=sceneEpoch,mapID=me.map_id;const x=Math.max(0,Math.floor((me.x-24)/16)*16),y=Math.max(0,Math.floor((me.y-24)/16)*16),key=x+','+y;if(regionCache.has(key))return;regionCache.add(key);try{const r=await fetch(`/api/map?map_id=${mapID}&x=${x}&y=${y}&w=64&h=64`);if(!r.ok)throw Error('地图读取失败');const d=await r.json();if(epoch!==sceneEpoch)return;for(const c of d.cells)mapCache.set(`${c.x},${c.y}`,c);invalidateBackground();redraw()}catch(e){status(e.message+'，刷新重试')}}
 const libMeta=new Map();
 function metaFor(lib){if(!libMeta.has(lib))libMeta.set(lib,fetchAsset(`/assets/${lib}/meta.json?v=all8`).then(r=>{if(!r.ok)throw Error();return r.json()}));return libMeta.get(lib)}
 function sprite(lib,index){if(index<0)return null;const key=`${lib}/${index}`;if(spriteCache.has(key))return spriteCache.get(key);const f={ready:false};spriteCache.set(key,f);
  const meta=ASSET_MANIFEST?metaFor(lib).then(m=>{const v=m[index];if(!v)throw Error('metadata missing');return v}):fetchAsset(`/assets/${key}.json`).then(r=>{if(!r.ok)throw Error();return r.json()});
- Promise.all([meta,new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,`/assets/${key}.png`,reject)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});redraw()}).catch(()=>{f.failed=true});return f;
+ Promise.all([meta,new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,`/assets/${key}.png`,reject)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});invalidateBackground();redraw()}).catch(()=>{f.failed=true});return f;
 }
 function draw(){
  ctx.fillStyle='#10130d';ctx.fillRect(0,0,canvas.width,canvas.height);if(!me)return;
  const now=performance.now(),camera=positionOf(me,motions.get(me.id),now),cx=Math.floor(camera.x*TW-canvas.width/2),cy=Math.floor(camera.y*TH-gameCenterY());npcHits=[];monsterHits=[];playerHits=[];dropHits=[];updateGate();
  const sx=Math.floor(cx/TW)-3,sy=Math.floor(cy/TH)-10,ex=Math.ceil((cx+canvas.width)/TW)+3,ey=Math.ceil((cy+canvas.height)/TH)+10;
  function tile(c,layer){if(c[layer]<0)return;const f=sprite(c[layer+'Library'],c[layer]);if(f?.ready)ctx.drawImage(f.im,c.x*TW-cx,layer==='back'?c.y*TH-cy:c.y*TH-cy+TH-f.height)}
+ function tileOn(g,c,layer,ox,oy){if(c[layer]<0)return;const f=sprite(c[layer+'Library'],c[layer]);if(f?.ready)g.drawImage(f.im,c.x*TW-ox,layer==='back'?c.y*TH-oy:c.y*TH-oy+TH-f.height)}
  function actor(lib,index,x,y,fallback){let f=sprite(lib,index);if(!f?.ready&&fallback!==undefined)f=sprite(lib,fallback);if(f?.ready)ctx.drawImage(f.im,Math.round(x+f.offsetX),Math.round(y+f.offsetY));return f}
  function label(text,x,y,color){ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillStyle=color;ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.fillText(text,x,y);ctx.shadowBlur=0}
  function frameFor(table,motion,dir,seed=0){const moving=motion&&now-motion.start<motion.duration,action=moving?motion.action:'idle',a=table[action]||table.idle;const frame=moving?Math.min(a.count-1,Math.floor((now-motion.start)/motion.duration*a.count)):Math.floor((now+seed*53)/220)%a.count;return {index:a.offset+dir*a.stride+frame,a}}
- for(let y=sy;y<=ey;y++)for(let x=sx;x<=ex;x++){const c=mapCache.get(`${x},${y}`);if(!c)continue;if(x%2===0&&y%2===0)tile(c,'back');tile(c,'middle')}
+ const bgStartX=Math.floor(cx/TW)-3,bgStartY=Math.floor(cy/TH)-10,bgW=Math.ceil(canvas.width/TW)+7,bgH=Math.ceil(canvas.height/TH)+21;
+ const nextBgKey=`${me.map_id}:${bgStartX}:${bgStartY}:${bgW}:${bgH}`;
+ if(bgKey!==nextBgKey||bgCanvas.width!==bgW*TW||bgCanvas.height!==bgH*TH){
+  bgCanvas.width=bgW*TW;bgCanvas.height=bgH*TH;bgctx.fillStyle='#10130d';bgctx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
+  for(let y=bgStartY;y<bgStartY+bgH;y++)for(let x=bgStartX;x<bgStartX+bgW;x++){const c=mapCache.get(`${x},${y}`);if(!c)continue;if(x%2===0&&y%2===0)tileOn(bgctx,c,'back',bgStartX*TW,bgStartY*TH);tileOn(bgctx,c,'middle',bgStartX*TW,bgStartY*TH)}
+  bgKey=nextBgKey;bgOriginX=bgStartX;bgOriginY=bgStartY;
+ }
+ ctx.drawImage(bgCanvas,bgOriginX*TW-cx,bgOriginY*TH-cy);
  for(const d of groundDrops.values()){
   const x=d.x*TW-cx+24,y=d.y*TH-cy+12;if(x<0||x>canvas.width||y<0||y>canvas.height)continue;
   ctx.fillStyle='#e6be5855';ctx.beginPath();ctx.ellipse(x,y+8,17,7,0,0,Math.PI*2);ctx.fill();
@@ -196,7 +205,7 @@ function draw(){
  if(destination){const x=destination.x*TW-cx+24,y=destination.y*TH-cy+16;ctx.strokeStyle='#e4c27a';ctx.beginPath();ctx.ellipse(x,y,16,8,0,0,Math.PI*2);ctx.stroke()}
 }
 function gameCenterY(){return (canvas.height-190*classicScale)/2}
-function resize(){classicScale=Math.min(1,innerWidth/800);document.documentElement.style.setProperty('--classic-scale',classicScale);canvas.width=innerWidth;canvas.height=innerHeight;ctx.imageSmoothingEnabled=false;$('stage').style.transform=`scale(${Math.min(1,innerWidth/800,innerHeight/650)})`;redraw()}
+function resize(){classicScale=Math.min(1,innerWidth/800);document.documentElement.style.setProperty('--classic-scale',classicScale);canvas.width=innerWidth;canvas.height=innerHeight;ctx.imageSmoothingEnabled=false;invalidateBackground();$('stage').style.transform=`scale(${Math.min(1,innerWidth/800,innerHeight/650)})`;redraw()}
 window.addEventListener('resize',resize);resize();loadRoles();
 const keyDir={ArrowUp:0,w:0,ArrowRight:2,d:2,ArrowDown:4,s:4,ArrowLeft:6,a:6,q:7,e:1,z:5,c:3};
 // Animation timing is driven by accepted server actions; rendering interpolates between tiles.
@@ -353,7 +362,7 @@ function receiveMonsterHit(c){
  if(c.target_id===me?.id){playSfx('hit');document.body.classList.add('hurt');setTimeout(()=>document.body.classList.remove('hurt'),200);log('受伤',`${c.attacker_name}造成 ${c.damage} 点伤害${c.killed?'，你已倒下。':'。'}`)}
 }
 function changeScene(scene){
- sceneEpoch++;portals=[];activeNPC=null;for(const d of document.querySelectorAll('dialog[open]'))d.close();stopMonsterSounds();currentScene=scene;me=null;mapCache.clear();regionCache.clear();players.clear();resetControls();npcs=[];
+ sceneEpoch++;invalidateBackground();portals=[];activeNPC=null;for(const d of document.querySelectorAll('dialog[open]'))d.close();stopMonsterSounds();currentScene=scene;me=null;mapCache.clear();regionCache.clear();players.clear();resetControls();npcs=[];
  for(const d of document.querySelectorAll('dialog[open]'))d.close();
  $('scene').querySelector('h2').textContent=scene.name;$('scene').querySelector('p').textContent=scene.province;
  document.querySelector('.scene-note').innerHTML='初入'+scene.name+'<br>① 出生点附近为安全区<br>② 走出村落，留意主动怪物<br>③ 点击掉落装备或按 F 拾取<br>④ 底部传送可切换地图';
