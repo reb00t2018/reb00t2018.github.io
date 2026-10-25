@@ -866,9 +866,16 @@ function tickQuestRoute(){const q=questRoute;if(me.map_id!==q.map||me.dead){canc
  if(here>=0)q.path.splice(0,here+1);
  if(!q.path.length){cancelQuestRoute();if(q.kind==='npc')send('talk',{npc_id:q.target.id});else status('已到达任务怪物附近，点击怪物或使用技能攻击');return}
  const [x,y]=q.path[0],dir=deltas.findIndex(([dx,dy])=>me.x+dx===x&&me.y+dy===y);
- const adjacent=dir>=0;
- if(!adjacent){const p=questPath(q.target);if(!p||!p.length){cancelQuestRoute();status('路线发生变化，请重新寻路');return}q.path=p;return}
- if(!canStep(me.x,me.y,dir)){cancelQuestRoute();status('路线发生变化，请重新寻路');return}
+ if(here<0){
+  // Accept the first node if it is a step toward the NPC. If it is a stale
+  // node behind us (run step or server correction), rebuild from here.
+  const currentDistance=Math.max(Math.abs(me.x-q.target.x),Math.abs(me.y-q.target.y));
+  const nextDistance=Math.max(Math.abs(x-q.target.x),Math.abs(y-q.target.y));
+  if(dir<0||nextDistance>currentDistance){
+   const p=questPath(q.target);if(!p||!p.length){cancelQuestRoute();status('路线发生变化，请重新寻路');return}q.path=p;return;
+  }
+ }
+ if(dir<0||!canStep(me.x,me.y,dir)){cancelQuestRoute();status('路线发生变化，请重新寻路');return}
  requestMove(dir,(q.path.length>1||runMode)&&canStep(me.x,me.y,dir))}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key))cancelQuestRoute()});
 
