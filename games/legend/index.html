@@ -158,7 +158,7 @@
 .equipment-detail button{font-size:12px;padding:4px 8px;min-height:26px}
 .equipment-card button:focus-visible{outline:2px solid #ffe08b;outline-offset:1px}
 </style><style id="equipment-head-fix">
-#growth-dialog.classic-character{width:348px;height:565px;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);inset:8px;margin:auto;transform:none;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+#growth-dialog.classic-character{width:360px;height:565px;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);inset:8px;margin:auto;transform:none;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
 #growth-dialog .equipment-shell{width:348px;height:565px;transform:none}
 #growth-dialog .equipment-card{left:-48px}
 </style><script src="js/config.js?v=round23"></script><script>
@@ -447,7 +447,8 @@ function pathDirection(target,adjacent=false){
 }
 function requestMove(dir,running){const [dx,dy]=deltas[dir];if(running&&!canStep(me.x+dx,me.y+dy,dir))running=false;if(send('move',{dir,run:running}))nextInputAt=performance.now()+(running?(me.run_ms||260):(me.walk_ms||360))+20}
 function inputTick(){
- if(!me||me.dead||chatOpen||document.querySelector('dialog[open]')||performance.now()<nextInputAt)return;
+ const blockingDialog=[...document.querySelectorAll('dialog[open]')].some(d=>d.id!=='inventory-dialog');
+ if(!me||me.dead||chatOpen||blockingDialog||performance.now()<nextInputAt)return;
  const held=heldDirection??[...heldKeys.values()].at(-1);
  if(held!==undefined&&held!==null){cancelQuestRoute();pickupTarget=null;destination=null;attackTarget=null;requestMove(held,runMode||shiftHeld);return}
  if(questRoute){tickQuestRoute();return}
@@ -468,7 +469,7 @@ document.addEventListener('keydown',e=>{
  if((e.key==='m'||e.key==='M'||e.key==='Tab')&&$('map-dialog').open){e.preventDefault();$('map-dialog').close();return}
  if(['q','k','c'].includes(e.key.toLowerCase())&&$('growth-dialog').open){e.preventDefault();openGrowth({q:'quest',k:'skills',c:'attributes'}[e.key.toLowerCase()]);return}
  if(e.key==='b'&&$('inventory-dialog').open){e.preventDefault();$('inventory-dialog').close();return}
- if(document.querySelector('dialog[open]'))return;
+ if([...document.querySelectorAll('dialog[open]')].some(d=>d.id!=='inventory-dialog'))return;
  if(e.key==='Enter'){e.preventDefault();stopActions();$('chat-input').focus();return}
  if(me.dead)return;if(e.key==='Shift'){shiftHeld=true;return}
  if(e.key==='Escape'){stopActions();$('chat-input').blur();chatOpen=false;status('已停止');return}
