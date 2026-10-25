@@ -296,7 +296,7 @@ function renderBag(){if(!me)return;for(const id of bagSelection){if(!me.inventor
 const sideSelect=document.createElement('select');sideSelect.id='equip-side';sideSelect.setAttribute('aria-label','首饰佩戴位置');sideSelect.innerHTML='<option value="">自动选择空位</option><option value="left">左侧</option><option value="right">右侧</option>';$('bag-actions').appendChild(sideSelect);
 $('equip-btn').onclick=()=>{if(bagRepairNPC){confirmBagRepair();return}const item=bagItems().find(i=>i.id===selectedItem);if(!item||equipPending)return;if(item.slot==='consumable'){equipPending=true;send('use_item',{item_id:item.id});renderBag();return}if(item.slot==='book'){send('learn',{skill_id:item.id.slice(5)});return}equipPending=true;if(!send(item.equipped?'unequip':'equip',{item_id:item.id,equip_slot:['ring','bracelet'].includes(item.slot)&&sideSelect.value?item.slot+'_'+sideSelect.value:''})){equipPending=false;status('连接已断开')}renderBag()};
 function nearestNPC(){if(!me)return null;return npcs.filter(n=>Math.max(Math.abs(n.x-me.x),Math.abs(n.y-me.y))<=6).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0]||null}
-$('talk-btn').onclick=()=>{const n=nearestNPC();if(n)send('talk',{npc_id:n.id})};$('party-btn').onclick=()=>{const name=prompt('输入要邀请的玩家名字');if(name&&name.trim()){if(send('party_invite',{recipient:name.trim()}))status('已发送组队邀请')}};
+$('talk-btn').onclick=()=>{const n=nearestNPC();if(n)talkToNPC(n)};$('party-btn').onclick=()=>{const name=prompt('输入要邀请的玩家名字');if(name&&name.trim()){if(send('party_invite',{recipient:name.trim()}))status('已发送组队邀请')}};
 function fitMerchant(){const scale=Math.min(1.35,(innerWidth-32)/416,(innerHeight-48)/456),height=merchantVisible?456:176;$('npc-stage').style.zoom=String(scale);$('npc-dialog').style.width=416*scale+'px';$('npc-dialog').style.height=height*scale+'px';$('npc-dialog').style.left=Math.max(8,Math.min(24,(innerWidth-416*scale)/2))+'px'}
 addEventListener('resize',fitMerchant);
 function showDialogue(d){bagRepairNPC=null;bagRepairMessage='';if($('inventory-dialog').open)renderBag();activeNPC=d;merchantMode=d.products?.length?'buy':'repair';merchantPage=0;merchantSelected='';merchantPending=false;merchantMessage='';merchantVisible=!!d.products?.length;renderServices();$('npc-name').textContent=d.name;$('npc-lines').replaceChildren();for(const line of d.lines){const p=document.createElement('p');p.textContent=line;$('npc-lines').appendChild(p)}fitMerchant();if(!$('npc-dialog').open)$('npc-dialog').showModal()}
@@ -489,13 +489,24 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('keyup',e=>{heldKeys.delete(e.code);if(e.key==='Shift')shiftHeld=false});
 window.addEventListener('blur',()=>{cancelQuestRoute();heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;updateTarget()});
 document.querySelectorAll('[data-dir]').forEach(b=>{b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);heldDirection=Number(b.dataset.dir);destination=null;attackTarget=null;inputTick()};b.onpointerup=b.onpointercancel=()=>heldDirection=null});
+function talkToNPC(n){
+ if(!n||!me)return;
+ stopActions();
+ const dist=Math.max(Math.abs(me.x-n.x),Math.abs(me.y-n.y));
+ if(dist<=6){send('talk',{npc_id:n.id});return}
+ const path=questPath(n);
+ if(!path||!path.length){status('无法到达'+n.name+'附近');return}
+ questRoute={path,target:n,kind:'npc',map:me.map_id};
+ $('cancel-route').hidden=false;
+ status('正在前往'+n.name+'，方向键或停止按钮可取消');
+}
 function canvasTarget(e,running=false){
  if(!me||me.dead||chatOpen)return;cancelQuestRoute();
  if((e.ctrlKey||pkMode)&&!running){const h=playerHits.find(h=>e.clientX>=h.x&&e.clientX<=h.x+h.w&&e.clientY>=h.y&&e.clientY<=h.y+h.h);if(h){stopActions();send('attack_player',{target_id:h.p.id});return}}
  const loot=dropHits.find(h=>e.clientX>=h.x&&e.clientX<=h.x+h.w&&e.clientY>=h.y&&e.clientY<=h.y+h.h);if(loot&&!running){choosePickup(loot.d.id);return}
  pickupTarget=null;
  const hit=[...npcHits,...monsterHits].filter(h=>e.clientX>=h.x&&e.clientX<=h.x+h.w&&e.clientY>=h.y&&e.clientY<=h.y+h.h).sort((a,b)=>(b.n||b.m).y-(a.n||a.m).y)[0];
- if(hit&&!running){if(hit.m)chooseAttack(hit.m.id);else{destination=null;attackTarget=null;send('talk',{npc_id:hit.n.id})}return}
+ if(hit&&!running){if(hit.m)chooseAttack(hit.m.id);else talkToNPC(hit.n);return}
  const p=positionOf(me,motions.get(me.id)),x=Math.floor((e.clientX+p.x*TW-canvas.width/2)/TW),y=Math.floor((e.clientY+p.y*TH-gameCenterY())/TH),cell=mapCache.get(`${x},${y}`);
  if(!cell||cell.blocked){status('这里无法通行');return}attackTarget=null;destination={x,y,run:running||runMode};nextInputAt=0;updateTarget();inputTick();
 }
@@ -847,7 +858,18 @@ function questPath(target){const start=me.x+','+me.y,open=[{x:me.x,y:me.y,g:0}],
  for(let n=0;open.length&&n<200000;n++){open.sort((a,b)=>(b.g+Math.max(Math.abs(b.x-target.x),Math.abs(b.y-target.y)))-(a.g+Math.max(Math.abs(a.x-target.x),Math.abs(a.y-target.y))));const p=open.pop(),key=p.x+','+p.y;if(closed.has(key))continue;closed.add(key);if(Math.max(Math.abs(p.x-target.x),Math.abs(p.y-target.y))<=1){end=key;break}for(let dir=0;dir<8;dir++){if(!canStep(p.x,p.y,dir))continue;const [dx,dy]=deltas[dir],x=p.x+dx,y=p.y+dy,k=x+','+y;if(portals.some(g=>g.x===x&&g.y===y)||npcs.some(g=>g.x===x&&g.y===y))continue;const g=p.g+1;if(g>=(best.get(k)??Infinity))continue;best.set(k,g);parent.set(k,key);open.push({x,y,g})}}
  if(end===null)return null;const path=[];for(let k=end;k!==start;k=parent.get(k)){if(!k)return null;path.push(k.split(',').map(Number))}return path.reverse();
 }
-function tickQuestRoute(){const q=questRoute;if(me.map_id!==q.map||me.dead){cancelQuestRoute();return}while(q.path.length&&q.path[0][0]===me.x&&q.path[0][1]===me.y)q.path.shift();if(!q.path.length){cancelQuestRoute();if(q.kind==='npc')send('talk',{npc_id:q.target.id});else status('已到达任务怪物附近，点击怪物或使用技能攻击');return}const [x,y]=q.path[0],dir=deltas.findIndex(([dx,dy])=>me.x+dx===x&&me.y+dy===y);if(dir<0||!canStep(me.x,me.y,dir)){cancelQuestRoute();status('路线发生变化，请重新寻路');return}requestMove(dir,(q.path.length>1||runMode)&&canStep(me.x,me.y,dir))}
+function tickQuestRoute(){const q=questRoute;if(me.map_id!==q.map||me.dead){cancelQuestRoute();return}
+ // The server can acknowledge movement after the next tick. Re-sync the
+ // route from the player's current tile instead of walking back to a
+ // stale node.
+ const here=q.path.findIndex(([x,y])=>x===me.x&&y===me.y);
+ if(here>=0)q.path.splice(0,here+1);
+ if(!q.path.length){cancelQuestRoute();if(q.kind==='npc')send('talk',{npc_id:q.target.id});else status('已到达任务怪物附近，点击怪物或使用技能攻击');return}
+ const [x,y]=q.path[0],dir=deltas.findIndex(([dx,dy])=>me.x+dx===x&&me.y+dy===y);
+ const adjacent=dir>=0;
+ if(!adjacent){const p=questPath(q.target);if(!p||!p.length){cancelQuestRoute();status('路线发生变化，请重新寻路');return}q.path=p;return}
+ if(!canStep(me.x,me.y,dir)){cancelQuestRoute();status('路线发生变化，请重新寻路');return}
+ requestMove(dir,(q.path.length>1||runMode)&&canStep(me.x,me.y,dir))}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key))cancelQuestRoute()});
 
 </script></html>
