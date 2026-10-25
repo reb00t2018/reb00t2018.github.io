@@ -299,7 +299,7 @@ function nearestNPC(){if(!me)return null;return npcs.filter(n=>Math.max(Math.abs
 $('talk-btn').onclick=()=>{const n=nearestNPC();if(n)talkToNPC(n)};$('party-btn').onclick=()=>{const name=prompt('输入要邀请的玩家名字');if(name&&name.trim()){if(send('party_invite',{recipient:name.trim()}))status('已发送组队邀请')}};
 function fitMerchant(){const scale=Math.min(1.35,(innerWidth-32)/416,(innerHeight-48)/456),height=merchantVisible?456:176;$('npc-stage').style.zoom=String(scale);$('npc-dialog').style.width=416*scale+'px';$('npc-dialog').style.height=height*scale+'px';$('npc-dialog').style.left=Math.max(8,Math.min(24,(innerWidth-416*scale)/2))+'px'}
 addEventListener('resize',fitMerchant);
-function showDialogue(d){bagRepairNPC=null;bagRepairMessage='';if($('inventory-dialog').open)renderBag();activeNPC=d;merchantMode=d.products?.length?'buy':'repair';merchantPage=0;merchantSelected='';merchantPending=false;merchantMessage='';merchantVisible=!!d.products?.length;renderServices();$('npc-name').textContent=d.name;$('npc-lines').replaceChildren();for(const line of d.lines){const p=document.createElement('p');p.textContent=line;$('npc-lines').appendChild(p)}fitMerchant();if(!$('npc-dialog').open)$('npc-dialog').showModal()}
+function showDialogue(d){cancelQuestRoute();bagRepairNPC=null;bagRepairMessage='';if($('inventory-dialog').open)renderBag();activeNPC=d;merchantMode=d.products?.length?'buy':'repair';merchantPage=0;merchantSelected='';merchantPending=false;merchantMessage='';merchantVisible=!!d.products?.length;renderServices();$('npc-name').textContent=d.name;$('npc-lines').replaceChildren();for(const line of d.lines){const p=document.createElement('p');p.textContent=line;$('npc-lines').appendChild(p)}fitMerchant();if(!$('npc-dialog').open)$('npc-dialog').showModal()}
 
 for(const id of ['close-npc','npc-goodbye'])$(id).onclick=()=>$('npc-dialog').close();$('npc-bag').onclick=()=>{bagSellNPC=activeNPC;$('npc-dialog').close();openBag()};
 const bgm=$('bgm');let musicAllowed=localStorage.getItem('legend_music')!=='off';bgm.volume=Number(localStorage.getItem('legend_volume')||.3);$('volume').value=bgm.volume*100;
@@ -449,7 +449,8 @@ function movementPanel(id){return id==='inventory-dialog'||id==='growth-dialog'}
 function blockingDialog(){return [...document.querySelectorAll('dialog[open]')].some(d=>!movementPanel(d.id))}
 function requestMove(dir,running){const [dx,dy]=deltas[dir];if(running&&!canStep(me.x+dx,me.y+dy,dir))running=false;if(send('move',{dir,run:running}))nextInputAt=performance.now()+(running?(me.run_ms||260):(me.walk_ms||360))+20}
 function inputTick(){
- if(!me||me.dead||chatOpen||blockingDialog()||performance.now()<nextInputAt)return;
+ if(!me||me.dead||chatOpen||blockingDialog()){if(questRoute)cancelQuestRoute();return}
+ if(performance.now()<nextInputAt)return;
  const held=heldDirection??[...heldKeys.values()].at(-1);
  if(held!==undefined&&held!==null){cancelQuestRoute();pickupTarget=null;destination=null;attackTarget=null;requestMove(held,runMode||shiftHeld);return}
  if(questRoute){tickQuestRoute();return}
@@ -851,7 +852,7 @@ async function startQuestRoute(){
   if(w*h>1000000)throw Error('目标区域过大，请先靠近目标地图');
   const chunks=[];for(let x=sx;x<sx+w;x+=160)for(let y=sy;y<sy+h;y+=160)chunks.push({x,y,w:Math.min(160,sx+w-x),h:Math.min(160,sy+h-y)});
   for(let i=0;i<chunks.length;i+=4){if(token!==questRequest||!me||me.map_id!==map)return;const batch=await Promise.all(chunks.slice(i,i+4).map(async c=>{const r=await fetch(`/api/map?map_id=${map}&x=${c.x}&y=${c.y}&w=${c.w}&h=${c.h}`);if(!r.ok)throw Error('寻路地图读取失败');return r.json()}));if(token!==questRequest||!me||me.map_id!==map)return;for(const d of batch)for(const c of d.cells)mapCache.set(c.x+','+c.y,c)}
-  const path=questPath(target);if(!path)throw Error('目标附近没有可通行路线');questRoute={path,target,kind,map};$('cancel-route').hidden=false;status('正在前往'+target.name+'，方向键或停止按钮可取消');
+  const path=questPath(target);if(!path)throw Error('目标附近没有可通行路线');if(!path.length){if(kind==='npc')send('talk',{npc_id:target.id});else status('已到达任务怪物附近');return}questRoute={path,target,kind,map};$('cancel-route').hidden=false;status('正在前往'+target.name+'，方向键或停止按钮可取消');
  }catch(e){if(token===questRequest){cancelQuestRoute();status(e.message)}}
 }
 function questPath(target){const start=me.x+','+me.y,open=[{x:me.x,y:me.y,g:0}],best=new Map([[start,0]]),parent=new Map(),closed=new Set();let end=null;
@@ -859,6 +860,14 @@ function questPath(target){const start=me.x+','+me.y,open=[{x:me.x,y:me.y,g:0}],
  if(end===null)return null;const path=[];for(let k=end;k!==start;k=parent.get(k)){if(!k)return null;path.push(k.split(',').map(Number))}return path.reverse();
 }
 function tickQuestRoute(){const q=questRoute;if(me.map_id!==q.map||me.dead){cancelQuestRoute();return}
+ const tickNow=performance.now();
+ if(q.lastX===undefined||q.lastX!==me.x||q.lastY!==me.y){q.lastX=me.x;q.lastY=me.y;q.lastAt=tickNow}
+ else if(tickNow-(q.lastAt||tickNow)>2200){
+  // A rejected step must not leave the route retrying forever.
+  const retry=questPath(q.target);
+  if(!retry||!retry.length){cancelQuestRoute();status('无法到达'+q.target.name+'附近');return}
+  q.path=retry;q.lastAt=tickNow;return;
+ }
  // The server can acknowledge movement after the next tick. Re-sync the
  // route from the player's current tile instead of walking back to a
  // stale node.
