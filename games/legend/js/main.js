@@ -281,10 +281,11 @@ function pathDirection(target,adjacent=false){
  }
  return null;
 }
+function movementPanel(id){return id==='inventory-dialog'||id==='growth-dialog'}
+function blockingDialog(){return [...document.querySelectorAll('dialog[open]')].some(d=>!movementPanel(d.id))}
 function requestMove(dir,running){const [dx,dy]=deltas[dir];if(running&&!canStep(me.x+dx,me.y+dy,dir))running=false;if(send('move',{dir,run:running}))nextInputAt=performance.now()+(running?(me.run_ms||260):(me.walk_ms||360))+20}
 function inputTick(){
- const blockingDialog=[...document.querySelectorAll('dialog[open]')].some(d=>d.id!=='inventory-dialog');
- if(!me||me.dead||chatOpen||blockingDialog||performance.now()<nextInputAt)return;
+ if(!me||me.dead||chatOpen||blockingDialog()||performance.now()<nextInputAt)return;
  const held=heldDirection??[...heldKeys.values()].at(-1);
  if(held!==undefined&&held!==null){cancelQuestRoute();pickupTarget=null;destination=null;attackTarget=null;requestMove(held,runMode||shiftHeld);return}
  if(questRoute){tickQuestRoute();return}
@@ -305,9 +306,10 @@ document.addEventListener('keydown',e=>{
  if((e.key==='m'||e.key==='M'||e.key==='Tab')&&$('map-dialog').open){e.preventDefault();$('map-dialog').close();return}
  if(['q','k','c'].includes(e.key.toLowerCase())&&$('growth-dialog').open){e.preventDefault();openGrowth({q:'quest',k:'skills',c:'attributes'}[e.key.toLowerCase()]);return}
  if(e.key==='b'&&$('inventory-dialog').open){e.preventDefault();$('inventory-dialog').close();return}
- if([...document.querySelectorAll('dialog[open]')].some(d=>d.id!=='inventory-dialog'))return;
+ if(blockingDialog())return;
  if(e.key==='Enter'){e.preventDefault();stopActions();$('chat-input').focus();return}
  if(me.dead)return;if(e.key==='Shift'){shiftHeld=true;return}
+ if(e.key==='Escape'&&$('growth-dialog').open){e.preventDefault();$('growth-dialog').close();return}
  if(e.key==='Escape'){stopActions();$('chat-input').blur();chatOpen=false;status('已停止');return}
  if(chatOpen)return;const key=e.key.toLowerCase();
  if(['q','k','c'].includes(key)){e.preventDefault();openGrowth({q:'quest',k:'skills',c:'attributes'}[key]);return}
@@ -315,7 +317,7 @@ document.addEventListener('keydown',e=>{
  if(key==='e'&&!e.repeat){e.preventDefault();enterGate();return}
  if(key==='f'&&!e.repeat){e.preventDefault();pickupNearest();return}
  if((key==='m'||key==='tab')&&!e.repeat){e.preventDefault();openMap();return}
- if(key==='b'){e.preventDefault();heldKeys.clear();openBag();return}
+ if(key==='b'){e.preventDefault();heldKeys.clear();if($('growth-dialog').open)$('growth-dialog').close();openBag();return}
  if(key==='r'&&!e.repeat){e.preventDefault();toggleRun();return}
  if(e.code==='Space'){e.preventDefault();if(!e.repeat)attackNearest();return}
  const dir=keyDir[e.key]??keyDir[key];if(dir!==undefined){e.preventDefault();heldKeys.set(e.code,dir);destination=null;attackTarget=null;updateTarget();inputTick()}
