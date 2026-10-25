@@ -144,7 +144,7 @@ function playMusic(){if(musicAllowed&&bgm.getAttribute('src'))bgm.play().then(mu
 $('music-btn').onclick=()=>{musicAllowed=bgm.paused;if(musicAllowed)playMusic();else bgm.pause();localStorage.setItem('legend_music',musicAllowed?'on':'off');musicLabel()};$('volume').oninput=()=>{bgm.volume=Number($('volume').value)/100;localStorage.setItem('legend_volume',String(bgm.volume))};bgm.onplay=musicLabel;bgm.onpause=musicLabel;bgm.onerror=()=>status('音乐读取失败，请刷新重试');musicLabel();
 async function loadRegion(){if(!me)return;const epoch=sceneEpoch,mapID=me.map_id;const x=Math.max(0,Math.floor((me.x-24)/16)*16),y=Math.max(0,Math.floor((me.y-24)/16)*16),key=x+','+y;if(regionCache.has(key))return;regionCache.add(key);try{const r=await fetch(`/api/map?map_id=${mapID}&x=${x}&y=${y}&w=64&h=64`);if(!r.ok)throw Error('地图读取失败');const d=await r.json();if(epoch!==sceneEpoch)return;for(const c of d.cells)mapCache.set(`${c.x},${c.y}`,c);redraw()}catch(e){status(e.message+'，刷新重试')}}
 const libMeta=new Map();
-function metaFor(lib){if(!libMeta.has(lib))libMeta.set(lib,fetchAsset(`/assets/${lib}/meta.json?v=all5`).then(r=>{if(!r.ok)throw Error();return r.json()}));return libMeta.get(lib)}
+function metaFor(lib){if(!libMeta.has(lib))libMeta.set(lib,fetchAsset(`/assets/${lib}/meta.json?v=all6`).then(r=>{if(!r.ok)throw Error();return r.json()}));return libMeta.get(lib)}
 function sprite(lib,index){if(index<0)return null;const key=`${lib}/${index}`;if(spriteCache.has(key))return spriteCache.get(key);const f={ready:false};spriteCache.set(key,f);
  const meta=ASSET_MANIFEST?metaFor(lib).then(m=>{const v=m[index];if(!v)throw Error('metadata missing');return v}):fetchAsset(`/assets/${key}.json`).then(r=>{if(!r.ok)throw Error();return r.json()});
  Promise.all([meta,new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,`/assets/${key}.png`,reject)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});redraw()}).catch(()=>{f.failed=true});return f;
@@ -513,8 +513,8 @@ function unequipToBag(id){
 }
 function wornInSlot(slot){return me.inventory.find(i=>i.equipped&&(i.equip_slot===slot||i.slot===slot&&['weapon','armor'].includes(slot)))}
 function renderCharacter(box){
- const scale=Math.min(1.5,(innerHeight-32)/362,(innerWidth-32)/264),shell=document.createElement('div');shell.className='equipment-shell';shell.style.width=264*scale+'px';shell.style.height=362*scale+'px';
- const card=document.createElement('section');card.className='equipment-card';card.style.zoom=String(scale);shell.appendChild(card);
+ const shell=document.createElement('div');shell.className='equipment-shell';
+ const card=document.createElement('section');card.className='equipment-card';shell.appendChild(card);
  const name=document.createElement('div');name.className='equipment-name';name.textContent=me.name;card.appendChild(name);
  const close=growthButton('关闭',()=>$('growth-dialog').close());close.className='equipment-close';close.setAttribute('aria-label','关闭人物穿戴');card.appendChild(close);
  const tabs=document.createElement('nav');tabs.className='equipment-tabs';tabs.setAttribute('aria-label','人物面板');
@@ -524,10 +524,10 @@ function renderCharacter(box){
   const doll=document.createElement('div');doll.className='paperdoll';doll.setAttribute('aria-label',classes[me.class]+'当前穿戴');
   const base=document.createElement('img');base.src='/ui/paperdoll-'+(me.gender==='female'?'female':'male')+'.png';base.className='paperdoll-base';base.alt='';doll.appendChild(base);
   const armor=wornInSlot('armor'),weapon=wornInSlot('weapon');
-  if(armor){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+armor.icon+'.png');im.className='paperdoll-armor';im.alt=armor.name;im.dataset.itemId=armor.id;im.style.left=(me.gender==='female'?42:41)+'px';im.style.top='65px';doll.appendChild(im)}
-  if(weapon){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+weapon.icon+'.png');im.className='paperdoll-weapon';im.alt=weapon.name;im.dataset.itemId=weapon.id;const offset={wood_sword:[25,56],iron_sword:[23,49],bronze_sword:[15,55]}[weapon.kind]||[25,56];im.style.left=offset[0]+'px';im.style.top=offset[1]+'px';doll.appendChild(im)}
+  if(armor){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+armor.icon+'.png');im.className='paperdoll-armor';im.alt=armor.name;im.dataset.itemId=armor.id;im.style.left=Math.round((me.gender==='female'?42:41)*1.5)+'px';im.style.top='98px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.5)+'px'};doll.appendChild(im)}
+  if(weapon){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+weapon.icon+'.png');im.className='paperdoll-weapon';im.alt=weapon.name;im.dataset.itemId=weapon.id;const offset={wood_sword:[25,56],iron_sword:[23,49],bronze_sword:[15,55]}[weapon.kind]||[25,56];im.style.left=Math.round(offset[0]*1.5)+'px';im.style.top=Math.round(offset[1]*1.5)+'px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.5)+'px'};doll.appendChild(im)}
   interior.appendChild(doll);
-  for(const [slot,label,x,y,kind]of equipmentLayout){const item=wornInSlot(slot),b=document.createElement('button');b.className='equipment-slot-button'+(['ring','bracelet','necklace'].includes(kind)?' jewelry-slot':'');b.dataset.slot=slot;b.style.left=x+'px';b.style.top=y+'px';b.classList.toggle('selected',selectedEquipmentSlot===slot);b.classList.toggle('broken',!!item&&item.durability===0);b.title=label+'：'+(item?item.name+' · '+item.description+' · 持久 '+item.durability+'/'+item.max_durability+(item.durability===0?' · 已损坏，属性失效':''):'未佩戴');b.setAttribute('aria-label',b.title);
+  for(const [slot,label,x,y,kind]of equipmentLayout){const item=wornInSlot(slot),b=document.createElement('button');b.className='equipment-slot-button'+(['ring','bracelet','necklace'].includes(kind)?' jewelry-slot':'');b.dataset.slot=slot;b.style.left=Math.round(x*1.5)+'px';b.style.top=Math.round(y*1.5)+'px';b.classList.toggle('selected',selectedEquipmentSlot===slot);b.classList.toggle('broken',!!item&&item.durability===0);b.title=label+'：'+(item?item.name+' · '+item.description+' · 持久 '+item.durability+'/'+item.max_durability+(item.durability===0?' · 已损坏，属性失效':''):'未佩戴');b.setAttribute('aria-label',b.title);
    if(item){const im=document.createElement('img');setImage(im,'/assets/Items/'+item.icon+'.png');im.alt=item.name;b.appendChild(im)}else{const empty=document.createElement('span');empty.className='empty-equipment';empty.textContent=label;b.appendChild(empty)}
    b.onclick=()=>{selectedEquipmentSlot=slot;renderGrowth()};b.ondblclick=()=>{if(item){unequipToBag(item.id);return}selectedItem=bagItems().find(i=>i.slot===kind)?.id||'';$('growth-dialog').close();openBag()};card.appendChild(b)
   }
