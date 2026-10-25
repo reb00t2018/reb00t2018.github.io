@@ -283,7 +283,8 @@ function pathDirection(target,adjacent=false){
 }
 function requestMove(dir,running){const [dx,dy]=deltas[dir];if(running&&!canStep(me.x+dx,me.y+dy,dir))running=false;if(send('move',{dir,run:running}))nextInputAt=performance.now()+(running?(me.run_ms||260):(me.walk_ms||360))+20}
 function inputTick(){
- if(!me||me.dead||chatOpen||document.querySelector('dialog[open]')||performance.now()<nextInputAt)return;
+ const blockingDialog=[...document.querySelectorAll('dialog[open]')].some(d=>d.id!=='inventory-dialog');
+ if(!me||me.dead||chatOpen||blockingDialog||performance.now()<nextInputAt)return;
  const held=heldDirection??[...heldKeys.values()].at(-1);
  if(held!==undefined&&held!==null){cancelQuestRoute();pickupTarget=null;destination=null;attackTarget=null;requestMove(held,runMode||shiftHeld);return}
  if(questRoute){tickQuestRoute();return}
@@ -304,7 +305,7 @@ document.addEventListener('keydown',e=>{
  if((e.key==='m'||e.key==='M'||e.key==='Tab')&&$('map-dialog').open){e.preventDefault();$('map-dialog').close();return}
  if(['q','k','c'].includes(e.key.toLowerCase())&&$('growth-dialog').open){e.preventDefault();openGrowth({q:'quest',k:'skills',c:'attributes'}[e.key.toLowerCase()]);return}
  if(e.key==='b'&&$('inventory-dialog').open){e.preventDefault();$('inventory-dialog').close();return}
- if(document.querySelector('dialog[open]'))return;
+ if([...document.querySelectorAll('dialog[open]')].some(d=>d.id!=='inventory-dialog'))return;
  if(e.key==='Enter'){e.preventDefault();stopActions();$('chat-input').focus();return}
  if(me.dead)return;if(e.key==='Shift'){shiftHeld=true;return}
  if(e.key==='Escape'){stopActions();$('chat-input').blur();chatOpen=false;status('已停止');return}
@@ -505,7 +506,6 @@ function growthHUD(){if(!me)return;const q=me.journey;$('quest-tracker').textCon
 function openGrowth(tab){if(!me)return;stopActions();const dialog=$('growth-dialog');if(dialog.open&&growthTab===tab){dialog.close();return}growthTab=tab;$('growth-feedback').textContent='';renderGrowth();if(!dialog.open)dialog.show()}
 $('quest-btn').onclick=()=>openGrowth('quest');$('quest-tracker').onclick=()=>openGrowth('quest');$('skills-btn').onclick=()=>openGrowth('skills');$('attributes-btn').onclick=()=>openGrowth('attributes');$('skills-hud-btn').onclick=()=>openGrowth('skills');$('character-hud-btn').onclick=()=>openGrowth('attributes');$('close-growth').onclick=()=>$('growth-dialog').close();$('stop-training').onclick=()=>send('train',{skill_id:''});
 function growthButton(label,action,disabled=false){const b=document.createElement('button');b.textContent=label;b.disabled=disabled;b.onclick=action;return b}
-function fitCharacterPanel(){const d=$('growth-dialog');if(!d.open||!d.classList.contains('classic-character'))return;const shell=d.querySelector('.equipment-shell');if(!shell)return;const availW=Math.max(1,d.clientWidth-8),availH=Math.max(1,d.clientHeight-8),scale=Math.min(1,availW/396,availH/565);shell.style.transformOrigin='top left';shell.style.transform=`scale(${scale})`;shell.style.width='396px';shell.style.height='565px'}
 function renderGrowth(){if(!me)return;const dialog=$('growth-dialog'),box=$('growth-content');box.replaceChildren();dialog.classList.toggle('classic-skills',growthTab==='skills');dialog.classList.toggle('classic-character',growthTab==='attributes');$('growth-title').textContent={quest:'玛法主线',skills:'职业技能与练功',attributes:'人物属性'}[growthTab];
  if(growthTab==='quest'){const q=me.journey;if(!q)return;const card=document.createElement('section');card.className='growth-card';const title=document.createElement('h3');title.textContent=(q.stage<4?'第'+(q.stage+1)+'章 · ':'')+q.title;card.appendChild(title);for(const text of [q.goal,q.target?'进度：'+q.kills+' / '+q.target:'',q.reward_exp?'奖励：经验 '+q.reward_exp+' · 金币 '+q.reward_gold+(q.stage===0||q.stage===2?' · 本职业技能书':''):'']){if(!text)continue;const p=document.createElement('p');p.textContent=text;card.appendChild(p)}const actions=document.createElement('div');actions.className='actions';if(q.stage<4){actions.appendChild(growthButton('交付任务',()=>send('claim_quest'),!q.ready));actions.appendChild(growthButton('自动寻路（可跨图传送）',()=>startQuestRoute()));actions.appendChild(growthButton('查找交付 NPC',()=>{const n=npcs.find(n=>n.id===q.npc_id);if(!n){$('growth-feedback').textContent='该 NPC 在其他地图，请按任务说明前往。';return}$('growth-dialog').close();openMap();mapFocus=n;mapSelected=n.id;mapWhole=false;mapList()}))}card.appendChild(actions);box.appendChild(card);return}
  if(growthTab==='skills'){const all=me.skills||[],sk=all.find(v=>v.id===selectedSkillId)||all[0];if(!sk)return;selectedSkillId=sk.id;const panel=document.createElement('div');panel.className='skill-book-panel';const close=growthButton('关闭',()=>dialog.close());close.className='panel-close';close.setAttribute('aria-label','关闭技能书');panel.appendChild(close);const scroll=document.createElement('img');scroll.className='skill-scroll';setImage(scroll,'/assets/Items/261.png');scroll.alt='客户端卷轴素材';panel.appendChild(scroll);const tabs=document.createElement('div');tabs.className='skill-tabs';for(const row of all){const b=growthButton(row.name+' · '+(row.rank?'技能 '+row.rank+' 级':'未学习'),()=>{selectedSkillId=row.id;renderGrowth()});b.classList.toggle('selected',row.id===sk.id);tabs.appendChild(b)}panel.appendChild(tabs);const detail=document.createElement('div');detail.className='skill-detail';const title=document.createElement('strong');title.textContent=sk.name+' · '+(sk.rank?'熟练度 '+sk.practice+'/60':'技能书 '+sk.books+' 本');detail.appendChild(title);const info=document.createElement('p');info.textContent='要求 Lv.'+sk.required_level+' · '+(sk.passive?'被动生效':'消耗 '+sk.mp+' MP · '+(sk.range?'距离 '+sk.range:'自身治疗'));detail.appendChild(info);const actions=document.createElement('div');actions.className='actions';actions.appendChild(growthButton('购买技能书 · '+sk.price+' 金币',()=>send('buy_book',{skill_id:sk.id}),!!sk.rank||sk.books>0));actions.appendChild(growthButton('学习',()=>send('learn',{skill_id:sk.id}),!!sk.rank||!sk.books||me.level<sk.required_level));if(sk.rank){actions.appendChild(growthButton(me.training===sk.id?'停止练功':'自动练功',()=>send('train',{skill_id:me.training===sk.id?'':sk.id}),sk.rank>=3));if(!sk.passive)actions.appendChild(growthButton('施放',()=>{dialog.close();castSkill(sk.id)}))}detail.appendChild(actions);panel.appendChild(detail);box.appendChild(panel);const help=document.createElement('p');help.className='skill-book-help';help.textContent='靠近向导、武馆教头或书店可购买与练功。F1–F8 或数字 1–8 施放快捷栏中的主动技能；移动、战斗或离线会停止练功。';box.appendChild(help);return}
@@ -533,7 +533,7 @@ function renderCharacter(box){
  const interior=document.createElement('div');interior.className='equipment-interior';card.appendChild(interior);
  if(characterTab==='equipment'){
   const doll=document.createElement('div');doll.className='paperdoll';doll.setAttribute('aria-label',classes[me.class]+'当前穿戴');
-  const base=document.createElement('img');base.src='/ui/paperdoll-'+(me.gender==='female'?'female':'male')+'.png';base.className='paperdoll-base';base.alt='';doll.appendChild(base);
+  const base=document.createElement('img');base.src=new URL('ui/paperdoll-'+(me.gender==='female'?'female':'male')+'.png',document.baseURI).href;base.className='paperdoll-base';base.alt='';doll.appendChild(base);
   const armor=wornInSlot('armor'),weapon=wornInSlot('weapon');
   if(armor){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+armor.icon+'.png');im.className='paperdoll-armor';im.alt=armor.name;im.dataset.itemId=armor.id;im.style.left=Math.round((me.gender==='female'?42:41)*1.5)+'px';im.style.top='98px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.5)+'px'};doll.appendChild(im)}
   if(weapon){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+weapon.icon+'.png');im.className='paperdoll-weapon';im.alt=weapon.name;im.dataset.itemId=weapon.id;const offset={wood_sword:[25,56],iron_sword:[23,49],bronze_sword:[15,55]}[weapon.kind]||[25,56];im.style.left=Math.round(offset[0]*1.5)+'px';im.style.top=Math.round(offset[1]*1.5)+'px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.5)+'px'};doll.appendChild(im)}
@@ -554,7 +554,7 @@ function renderCharacter(box){
   interior.appendChild(stats);const note=document.createElement('div');note.className='equipment-detail';note.textContent=characterTab==='attributes'?'穿戴装备后属性即时生效；持久耗尽则失效。':'生命与魔法随战斗实时更新。';card.appendChild(note);
  }
  box.appendChild(shell);
- requestAnimationFrame(fitCharacterPanel);
+
 }
 window.addEventListener('resize',()=>{if($('growth-dialog').open&&growthTab==='attributes')renderGrowth()});
 
