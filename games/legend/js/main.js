@@ -551,7 +551,7 @@ function buildEquipmentDetail(){
  const detail=document.createElement('div');detail.className='equipment-detail';const entry=equipmentLayout.find(e=>e[0]===selectedEquipmentSlot),it=entry?wornInSlot(entry[0]):null;
  if(it){const title=document.createElement('strong');title.textContent=it.name+' · 持久 '+it.durability+'/'+it.max_durability;detail.appendChild(title);const p=document.createElement('p');p.textContent=it.description+(it.durability===0?' · 已损坏，属性失效':'');detail.appendChild(p);detail.appendChild(growthButton('卸下到背包',()=>unequipToBag(it.id),equipPending||bagItems().length>=40));if(bagItems().length>=40){const note=document.createElement('p');note.textContent='背包已满，请先腾出一个空格。';detail.appendChild(note)}}
  else{const p=document.createElement('p');p.textContent=entry?entry[1]+' · 未佩戴':'点击装备查看属性与持久';detail.appendChild(p)}
- detail.appendChild(growthButton('背包选装',()=>{selectedItem=bagItems().find(i=>i.slot===entry?.[4])?.id||'';$('growth-dialog').close();openBag()}));return detail;
+ detail.appendChild(growthButton('背包选装',()=>{selectedItem=bagItems().find(i=>i.slot===entry?.[4])?.id||'';$('growth-dialog').close();openBag()}));const copy=document.createElement('div'),actions=document.createElement('div');copy.className='equipment-detail-copy';actions.className='equipment-detail-actions';for(const child of [...detail.children])(child.tagName==='BUTTON'?actions:copy).appendChild(child);detail.replaceChildren(copy,actions);return detail;
 }
 function unequipToBag(id){
  if(equipPending||!me?.inventory.some(item=>item.id===id&&item.equipped))return;
@@ -561,6 +561,15 @@ function unequipToBag(id){
  renderGrowth();
 }
 function wornInSlot(slot){return me.inventory.find(i=>i.equipped&&(i.equip_slot===slot||i.slot===slot&&['weapon','armor'].includes(slot)))}
+// Prguse/376 and 377 paper dolls use a common stateitem origin.
+// Verified against cloth (48,21) and wood sword (32,12): origin (-7,44).
+function addPaperdollLayer(doll,item,layer){
+ const im=document.createElement('img');im.className='paperdoll-'+layer;im.alt=item.name;im.dataset.itemId=item.id;im.style.visibility='hidden';doll.appendChild(im);
+ const loaded=new Promise((resolve,reject)=>{im.onload=()=>resolve();setImage(im,'/assets/stateitem/'+item.icon+'.png',reject)});
+ const metadata=ASSET_MANIFEST?metaFor('stateitem').then(m=>{if(!m[item.icon])throw Error('missing metadata');return m[item.icon]}):fetchAsset('/assets/stateitem/'+item.icon+'.json').then(r=>{if(!r.ok)throw Error('metadata unavailable');return r.json()});
+ const originX=me.gender==='female'?-6:-7;
+ Promise.all([loaded,metadata]).then(([,m])=>{if(!Number.isFinite(m.offsetX)||!Number.isFinite(m.offsetY))throw Error('invalid offset');im.style.left=Math.round((m.offsetX+originX)*1.25)+'px';im.style.top=Math.round((m.offsetY+44)*1.25)+'px';im.style.width=Math.round(im.naturalWidth*1.25)+'px';im.style.height=Math.round(im.naturalHeight*1.25)+'px';im.style.visibility='visible'}).catch(()=>{im.remove();if(doll.isConnected)status('人物装备图暂时未能读取，请稍后重试')});
+}
 function renderCharacter(box){
  hideEquipmentTooltip();
  const shell=document.createElement('div');shell.className='equipment-shell';
@@ -575,11 +584,7 @@ function renderCharacter(box){
  if(characterTab==='equipment'){
   const doll=document.createElement('div');doll.className='paperdoll';doll.setAttribute('aria-label',classes[me.class]+'当前穿戴');
   const base=document.createElement('img');base.src=new URL('ui/paperdoll-'+(me.gender==='female'?'female':'male')+'.png',document.baseURI).href;base.className='paperdoll-base';base.alt='';doll.appendChild(base);
-  const armor=wornInSlot('armor'),weapon=wornInSlot('weapon');
-  if(armor){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+armor.icon+'.png');im.className='paperdoll-armor';im.alt=armor.name;im.dataset.itemId=armor.id;im.style.left=Math.round((me.gender==='female'?42:41)*1.25)+'px';im.style.top='82px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.25)+'px'};doll.appendChild(im)}
-  const helmet=wornInSlot('helmet');
-  if(helmet){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+helmet.icon+'.png');im.className='paperdoll-helmet';im.alt=helmet.name;im.dataset.itemId=helmet.id;im.style.left='90px';im.style.top='58px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.25)+'px';im.style.height=Math.round(im.naturalHeight*1.25)+'px'};doll.appendChild(im)}
-  if(weapon){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+weapon.icon+'.png');im.className='paperdoll-weapon';im.alt=weapon.name;im.dataset.itemId=weapon.id;const offset={wood_sword:[25,56],iron_sword:[23,49],bronze_sword:[15,55]}[weapon.kind]||[25,56];im.style.left=Math.round(offset[0]*1.25)+'px';im.style.top=Math.round(offset[1]*1.25)+'px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.25)+'px'};doll.appendChild(im)}
+  for(const [slot,layer]of [['armor','armor'],['helmet','helmet'],['weapon','weapon']]){const item=wornInSlot(slot);if(item)addPaperdollLayer(doll,item,layer)}
   interior.appendChild(doll);
   for(const [slot,label,x,y,kind]of equipmentLayout){const item=wornInSlot(slot),b=document.createElement('button');b.className='equipment-slot-button'+(['ring','bracelet','necklace'].includes(kind)?' jewelry-slot':'');b.dataset.slot=slot;b.style.left=x+'px';b.style.top=y+'px';b.classList.toggle('body-equipment-slot',['weapon','armor','helmet'].includes(slot));b.classList.toggle('selected',selectedEquipmentSlot===slot);b.classList.toggle('broken',!!item&&item.durability===0);b.setAttribute('aria-label',label+'：'+(item?item.name+' · '+item.description+' · 持久 '+item.durability+'/'+item.max_durability+(item.durability===0?' · 已损坏，属性失效':''):'未佩戴'));b.onmouseenter=()=>showEquipmentTooltip(b,item,label);b.onmouseleave=hideEquipmentTooltip;b.onfocus=()=>showEquipmentTooltip(b,item,label);b.onblur=hideEquipmentTooltip;
    if(item){const im=document.createElement('img');setImage(im,'/assets/Items/'+item.icon+'.png');im.alt=item.name;b.appendChild(im)}else{const empty=document.createElement('span');empty.className='empty-equipment';empty.textContent=label;b.appendChild(empty)}
