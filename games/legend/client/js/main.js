@@ -43,12 +43,14 @@ let bagMulti=false,bagPending='',discardIds=[];const bagSelection=new Set();
 let growthTab="quest",selectedSkillId=null;
 let portals=[],activeNPC=null,bagRepairNPC=null,bagSellNPC=null,bagRepairMessage='';
 let merchantMode='buy',merchantPage=0,merchantSelected='',merchantPending=false,merchantVisible=true,merchantMessage='';
-let ws=null,me=null,chatOpen=false,roles=[],selectedRole=null,selectedItem='cloth',npcs=[],npcHits=[],drawing=false,equipPending=false,inviteBound=false,inviteChecked=false,accountBound=false,accountChecked=false,loginMode='invite';
+let ws=null,me=null,chatOpen=false,onlineCount=0,onlineLoaded=false,roles=[],selectedRole=null,selectedItem='cloth',npcs=[],npcHits=[],drawing=false,equipPending=false,inviteBound=false,inviteChecked=false,accountBound=false,accountChecked=false,loginMode='invite';
 let classicScale=1,currentScene={id:0,name:'银杏山谷',province:'比奇省',music:'/audio/field2.wav'},sceneEpoch=0;
 for(const id of ['chat','chat-form','hint','game-actions'])$('classic-panel').appendChild($(id));
 $('attack-btn').textContent='攻击';$('talk-btn').textContent='交谈';$('switch-btn').textContent='选角';
 const players=new Map(),mapCache=new Map(),regionCache=new Set(),spriteCache=new Map();
 function status(text=''){$('status').textContent=text}
+function setOnline(n){onlineCount=Number(n)||0;const el=$('online-count');if(el)el.textContent='在线 '+onlineCount+' 人'}
+async function refreshOnline(){try{const r=await fetch('/api/online');if(!r.ok)return;const d=await r.json();setOnline(d.count)}catch{}}
 let frameLoop=false,lastFrame=0;const FRAME_MS=33;function redraw(){if(frameLoop)return;frameLoop=true;const tick=ts=>{if(!me){frameLoop=false;draw();return}if(ts-lastFrame>=FRAME_MS){lastFrame=ts;draw()}requestAnimationFrame(tick)};requestAnimationFrame(tick)}
 function log(name,text){const d=document.createElement('div');d.textContent=`[${name}] ${text}`;$('chat').appendChild(d);while($('chat').children.length>100)$('chat').firstChild.remove();$('chat').scrollTop=$('chat').scrollHeight}
 function send(op,extra={}){if(ws?.readyState===WebSocket.OPEN){ws.send(JSON.stringify({op,...extra}));return true}return false}
@@ -97,6 +99,7 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
   if(m.op==='portals'){portals=m.data||[];updateGate()}
   if(m.op==='traded'){merchantPending=false;merchantMessage='交易完成，物品已放入背包。';applyPlayer(m.data);equipPending=false;renderBag();renderServices();renderGrowth();status('交易／用药完成，背包与金币已保存')}
   if(m.op==='repaired'){bagRepairMessage='修理完成，所选物品的持久已恢复。';merchantPending=false;merchantMessage='修理完成，持久已恢复。';applyPlayer(m.data);renderBag();renderServices();renderGrowth();status('修理完成，耐久已恢复，金币已扣除并保存')}
+  if(m.op==='online'){setOnline(m.data?.count);return}
   if(m.op==='scene')changeScene(m.data);if(m.op==='relocated'){if(me&&m.data.id===me.id){motions.clear();players.delete(me.id);stopActions();me=m.data;regionCache.clear();loadRegion();applyPlayer(m.data,false);hud();status('已到达'+currentScene.name)}}
   if(m.op==='drops')updateDrops(m.data);
   if(m.op==='picked_up'){applyPlayer(m.data.player);pickupTarget=null;if(m.data.item_id)selectedItem=m.data.item_id;renderBag();status('拾取了'+m.data.name);log('拾取',m.data.name+(m.data.gold?'已存入金币':'已放入背包'))}
@@ -121,7 +124,7 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
 $('switch-btn').onclick=()=>ws?.close();
 addEventListener('pagehide',()=>ws?.close());
 function renderParty(d){const box=$('party-panel');if(!box)return;const members=d?.members||[];box.hidden=members.length===0;box.replaceChildren();if(!members.length)return;const h=document.createElement('strong');h.textContent='队伍 · '+(d.leader||'');box.appendChild(h);for(const m of members){const row=document.createElement('div');row.textContent=m.name+' Lv.'+m.level+' · HP '+m.hp+'/'+m.max_hp;box.appendChild(row)}}
-function hud(){if(!me)return;growthHUD();updateLocation();$('hud-name').textContent=`${me.name} · ${classes[me.class]||'新手'}`;$('hp-fill').style.width=100*me.hp/me.max_hp+'%';$('mp-fill').style.width=100*me.mp/me.max_mp+'%';$('hud-stats').textContent=`Lv.${me.level}  攻击 ${me.attack_min??me.attack}–${me.attack}  防御 ${me.defense}`;$('exp-fill').style.width=(me.next_exp>0?Math.min(1,(me.exp||0)/me.next_exp)*100:0)+'%';$('exp-text').textContent=`经验 ${me.exp||0} / ${me.next_exp>0?me.next_exp:'后续等级待校准'}`;$('hud-pos').textContent=`(${me.x}, ${me.y}) ${currentScene.province} · ${currentScene.name}`;$('talk-btn').disabled=!nearestNPC();updateVitals();$('equipment-stats').textContent=`${me.name}  |  攻击 ${me.attack_min??me.attack}–${me.attack} · 防御 ${me.defense}`}
+function hud(){if(!me)return;if(!onlineLoaded){onlineLoaded=true;refreshOnline()}growthHUD();updateLocation();$('hud-name').textContent=`${me.name} · ${classes[me.class]||'新手'}`;$('hp-fill').style.width=100*me.hp/me.max_hp+'%';$('mp-fill').style.width=100*me.mp/me.max_mp+'%';$('hud-stats').textContent=`Lv.${me.level}  攻击 ${me.attack_min??me.attack}–${me.attack}  防御 ${me.defense}`;$('exp-fill').style.width=(me.next_exp>0?Math.min(1,(me.exp||0)/me.next_exp)*100:0)+'%';$('exp-text').textContent=`经验 ${me.exp||0} / ${me.next_exp>0?me.next_exp:'后续等级待校准'}`;$('hud-pos').textContent=`(${me.x}, ${me.y}) ${currentScene.province} · ${currentScene.name}`;$('talk-btn').disabled=!nearestNPC();updateVitals();$('equipment-stats').textContent=`${me.name}  |  攻击 ${me.attack_min??me.attack}–${me.attack} · 防御 ${me.defense}`}
 function bagItems(){return (me?.inventory||[]).filter(item=>!item.equipped)}
 function openBag(){if(!me||me.dead)return;if(!bagSellNPC)bagSellNPC=nearestNPC();renderBag();if(!$('inventory-dialog').open)$('inventory-dialog').show()}
 $('bag-btn').onclick=openBag;$('close-bag').onclick=()=>$('inventory-dialog').close();
@@ -262,7 +265,7 @@ function receiveCombat(c){if(c.skill_id==='fireball'||c.skill_id==='big_fireball
   if(c.leveled){playSfx('level');$('level-toast').textContent=`等级提升 · Lv.${me.level}`;$('level-toast').classList.add('show');setTimeout(()=>$('level-toast').classList.remove('show'),2600);log('成长',`升到 ${me.level} 级！生命和攻击提升。`)}
  }
 }
-function resetControls(){questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();damageLabels.length=0;updateTarget()}
+function resetControls(){onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();damageLabels.length=0;updateTarget()}
 function toggleRun(){runMode=!runMode;$('run-btn').textContent=runMode?'奔跑':'行走';$('run-btn').setAttribute('aria-pressed',String(runMode))}
 $('run-btn').textContent='行走';$('run-btn').onclick=toggleRun;
 function chooseAttack(id){if(!me)return;const m=monsters.get(id);if(!m||m.hp<=0)return;pickupTarget=null;attackTarget=id;destination=null;heldKeys.clear();heldDirection=null;nextInputAt=0;updateTarget();status(`目标：${m.name}，靠近后自动攻击；Esc 取消`)}
