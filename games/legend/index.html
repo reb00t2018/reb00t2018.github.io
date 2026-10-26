@@ -189,6 +189,7 @@
 #growth-dialog .equipment-stat-page h3{font-size:17px;margin-bottom:12px}
 .equipment-tooltip{position:fixed;z-index:1000;max-width:min(245px,calc(100vw - 24px));box-sizing:border-box;padding:7px 9px;background:#24270de8;border:1px solid #706f3e;color:#f1edcd;font:14px/1.4 Arial,'PingFang SC',sans-serif;pointer-events:none;white-space:normal;box-shadow:0 3px 8px #0006}
 .equipment-tooltip strong{display:block;color:#f5f136;font-size:15px;font-weight:normal}
+@media(max-width:340px){#growth-dialog.classic-character{max-width:calc(100vw - 8px);right:4px}}
 </style><script src="js/config.js?v=round23"></script><script>
 'use strict';
 const SERVER=(window.LEGEND_SERVER||'').replace(/\/$/,'');
@@ -768,6 +769,8 @@ function renderCharacter(box){
   const base=document.createElement('img');base.src=new URL('ui/paperdoll-'+(me.gender==='female'?'female':'male')+'.png',document.baseURI).href;base.className='paperdoll-base';base.alt='';doll.appendChild(base);
   const armor=wornInSlot('armor'),weapon=wornInSlot('weapon');
   if(armor){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+armor.icon+'.png');im.className='paperdoll-armor';im.alt=armor.name;im.dataset.itemId=armor.id;im.style.left=Math.round((me.gender==='female'?42:41)*1.25)+'px';im.style.top='82px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.25)+'px'};doll.appendChild(im)}
+  const helmet=wornInSlot('helmet');
+  if(helmet){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+helmet.icon+'.png');im.className='paperdoll-helmet';im.alt=helmet.name;im.dataset.itemId=helmet.id;im.style.left='90px';im.style.top='58px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.25)+'px';im.style.height=Math.round(im.naturalHeight*1.25)+'px'};doll.appendChild(im)}
   if(weapon){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+weapon.icon+'.png');im.className='paperdoll-weapon';im.alt=weapon.name;im.dataset.itemId=weapon.id;const offset={wood_sword:[25,56],iron_sword:[23,49],bronze_sword:[15,55]}[weapon.kind]||[25,56];im.style.left=Math.round(offset[0]*1.25)+'px';im.style.top=Math.round(offset[1]*1.25)+'px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.25)+'px'};doll.appendChild(im)}
   interior.appendChild(doll);
   for(const [slot,label,x,y,kind]of equipmentLayout){const item=wornInSlot(slot),b=document.createElement('button');b.className='equipment-slot-button'+(['ring','bracelet','necklace'].includes(kind)?' jewelry-slot':'');b.dataset.slot=slot;b.style.left=x+'px';b.style.top=y+'px';b.classList.toggle('body-equipment-slot',['weapon','armor','helmet'].includes(slot));b.classList.toggle('selected',selectedEquipmentSlot===slot);b.classList.toggle('broken',!!item&&item.durability===0);b.setAttribute('aria-label',label+'：'+(item?item.name+' · '+item.description+' · 持久 '+item.durability+'/'+item.max_durability+(item.durability===0?' · 已损坏，属性失效':''):'未佩戴'));b.onmouseenter=()=>showEquipmentTooltip(b,item,label);b.onmouseleave=hideEquipmentTooltip;b.onfocus=()=>showEquipmentTooltip(b,item,label);b.onblur=hideEquipmentTooltip;
