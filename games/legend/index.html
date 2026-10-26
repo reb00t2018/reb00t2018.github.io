@@ -162,6 +162,33 @@
 #growth-dialog.classic-character{width:360px;height:565px;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);inset:8px;margin:auto;transform:none;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
 #growth-dialog .equipment-shell{width:348px;height:565px;transform:none}
 #growth-dialog .equipment-card{left:-48px}
+
+/* Compact character sheet based on the latest supplied client reference. */
+#growth-dialog.classic-character{width:312px;height:453px;inset:8px 16px 8px auto;margin:auto 0;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px)}
+#growth-dialog .equipment-shell{width:300px;height:453px}
+#growth-dialog .equipment-card{left:0;width:300px;height:453px;background-position:10px 0;background-size:290px 453px}
+#growth-dialog .equipment-name{left:64px;top:23px;width:200px;font-size:16px;line-height:20px}
+#growth-dialog .equipment-close{left:19px;top:49px;width:17px;height:26px;background:url('assets/Prguse/64.png') center/17px 26px no-repeat}
+#growth-dialog .equipment-interior{left:57px;top:65px;width:214px;height:300px;background:repeating-linear-gradient(90deg,#17191d 0,#17191d 2px,#13151a 3px,#13151a 5px);box-shadow:inset 0 0 24px #0009}
+#growth-dialog .paperdoll{width:210px;height:249px;left:1px;top:0}
+#growth-dialog .paperdoll-base{width:210px;height:249px}
+#growth-dialog .equipment-tabs{left:10px;top:180px;width:29px;gap:43px;z-index:5}
+#growth-dialog .equipment-tabs button{width:29px;height:29px;padding:0;border:0;border-radius:50%;background:transparent url('assets/Prguse/385.png') -36px -173px no-repeat;box-shadow:none;color:transparent;font-size:0;writing-mode:horizontal-tb;transform:rotate(90deg)}
+#growth-dialog .equipment-tabs button[data-character-step="1"]{transform:rotate(-90deg)}
+#growth-dialog .equipment-slot-button{transform:none;width:36px;height:36px;padding:1px;border:1px solid #94999b;border-radius:0;background:#080b1077;box-shadow:inset 0 0 0 1px #41474f,0 0 0 1px #070a0f;color:#d5d7da;z-index:3}
+#growth-dialog .equipment-slot-button img{max-width:32px;max-height:32px}
+#growth-dialog .equipment-slot-button .empty-equipment{visibility:hidden}
+#growth-dialog .equipment-slot-button.body-equipment-slot{border:0;background:none;box-shadow:none;z-index:2}
+#growth-dialog .body-equipment-slot img{visibility:hidden}
+#growth-dialog .body-equipment-slot[data-slot="weapon"]{width:40px;height:105px}
+#growth-dialog .body-equipment-slot[data-slot="armor"]{width:65px;height:110px}
+#growth-dialog .body-equipment-slot:hover,#growth-dialog .body-equipment-slot:focus-visible{outline:1px dashed #b7ab7f;outline-offset:0}
+#growth-dialog .equipment-detail{left:42px;top:382px;width:239px;height:64px;box-sizing:border-box;padding:4px;background:#10131888;border:0;color:#e2d9bf;font-size:12px;line-height:1.35}
+#growth-dialog .equipment-detail button{font-size:12px;min-height:24px;padding:2px 5px;margin-right:5px}
+#growth-dialog .equipment-stat-page{font-size:13px;padding:9px 10px;box-sizing:border-box}
+#growth-dialog .equipment-stat-page h3{font-size:17px;margin-bottom:12px}
+.equipment-tooltip{position:fixed;z-index:1000;max-width:min(245px,calc(100vw - 24px));box-sizing:border-box;padding:7px 9px;background:#24270de8;border:1px solid #706f3e;color:#f1edcd;font:14px/1.4 Arial,'PingFang SC',sans-serif;pointer-events:none;white-space:normal;box-shadow:0 3px 8px #0006}
+.equipment-tooltip strong{display:block;color:#f5f136;font-size:15px;font-weight:normal}
 </style><script src="js/config.js?v=round23"></script><script>
 'use strict';
 const SERVER=(window.LEGEND_SERVER||'').replace(/\/$/,'');
@@ -696,7 +723,27 @@ function renderGrowth(){if(!me)return;const dialog=$('growth-dialog'),box=$('gro
 function castSkill(id){if(!me||me.dead)return;const sk=me.skills?.find(s=>s.id===id);if(!sk?.rank||sk.passive){status('该技能未学习或为被动技能');return}let target=null;if(sk.kind==='damage'){target=monsters.get(attackTarget)||[...monsters.values()].filter(m=>m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=sk.range).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];if(!target){status('施法范围内没有目标');return}}stopActions();send('cast',{skill_id:id,target_id:target?.id||0})}
 
 let characterTab='equipment',selectedEquipmentSlot='';
-const equipmentLayout=[['weapon','武器',39,60,'weapon'],['armor','衣服',85,60,'armor'],['helmet','头盔',177,60,null],['necklace','项链',177,101,'necklace'],['charm','勋章',177,142,null],['bracelet_left','左手镯',39,183,'bracelet'],['bracelet_right','右手镯',177,183,'bracelet'],['ring_left','左戒指',39,224,'ring'],['ring_right','右戒指',177,224,'ring'],['stone','宝石',39,266,null],['belt','腰带',85,266,null],['boots','靴子',131,266,null],['seal','印记',177,266,null]];
+const equipmentLayout=[['weapon','武器',75,120,'weapon'],['armor','衣服',127,153,'armor'],['helmet','头盔',148,99,'helmet'],['necklace','项链',232,130,'necklace'],['charm','勋章',232,178,'charm'],['bracelet_left','左手镯',58,226,'bracelet'],['bracelet_right','右手镯',232,226,'bracelet'],['ring_left','左戒指',58,270,'ring'],['ring_right','右戒指',232,270,'ring'],['stone','宝石',58,324,'stone'],['belt','腰带',101,324,'belt'],['boots','靴子',144,324,'boots'],['seal','印记',187,324,'seal']];
+let equipmentTooltip=null;
+function hideEquipmentTooltip(){equipmentTooltip?.remove();equipmentTooltip=null}
+function showEquipmentTooltip(button,item,label){
+ hideEquipmentTooltip();const tip=document.createElement('div');tip.className='equipment-tooltip';tip.id='equipment-tooltip';tip.setAttribute('role','tooltip');
+ const title=document.createElement('strong');title.textContent=item?.name||label;tip.appendChild(title);
+ const lines=item?[...(Number.isFinite(item.weight)?['重量 '+item.weight]:[]),'持久 '+item.durability+'/'+item.max_durability,item.description||'',...(item.required_level?['需要等级 '+item.required_level]:[]),...(item.durability===0?['已损坏，属性失效']:[])]:['未佩戴'];
+ for(const line of lines.filter(Boolean)){const p=document.createElement('div');p.textContent=line;tip.appendChild(p)}
+ document.body.appendChild(tip);equipmentTooltip=tip;const panel=$('growth-dialog').getBoundingClientRect(),r=button.getBoundingClientRect(),w=tip.offsetWidth,h=tip.offsetHeight;
+ const left=panel.left-w-12>=8?panel.left-w-12:panel.right+w+12<=innerWidth-8?panel.right+12:Math.max(8,Math.min(r.left,innerWidth-w-8));
+ tip.style.left=left+'px';tip.style.top=Math.max(8,Math.min(r.top,innerHeight-h-8))+'px';
+}
+$('growth-dialog').addEventListener('close',hideEquipmentTooltip);
+$('growth-dialog').addEventListener('scroll',hideEquipmentTooltip);
+window.addEventListener('resize',hideEquipmentTooltip);
+function buildEquipmentDetail(){
+ const detail=document.createElement('div');detail.className='equipment-detail';const entry=equipmentLayout.find(e=>e[0]===selectedEquipmentSlot),it=entry?wornInSlot(entry[0]):null;
+ if(it){const title=document.createElement('strong');title.textContent=it.name+' · 持久 '+it.durability+'/'+it.max_durability;detail.appendChild(title);const p=document.createElement('p');p.textContent=it.description+(it.durability===0?' · 已损坏，属性失效':'');detail.appendChild(p);detail.appendChild(growthButton('卸下到背包',()=>unequipToBag(it.id),equipPending||bagItems().length>=40));if(bagItems().length>=40){const note=document.createElement('p');note.textContent='背包已满，请先腾出一个空格。';detail.appendChild(note)}}
+ else{const p=document.createElement('p');p.textContent=entry?entry[1]+' · 未佩戴':'点击装备查看属性与持久';detail.appendChild(p)}
+ detail.appendChild(growthButton('背包选装',()=>{selectedItem=bagItems().find(i=>i.slot===entry?.[4])?.id||'';$('growth-dialog').close();openBag()}));return detail;
+}
 function unequipToBag(id){
  if(equipPending||!me?.inventory.some(item=>item.id===id&&item.equipped))return;
  if(bagItems().length>=40){status('背包已满，请先腾出一个空格');return}
@@ -706,28 +753,28 @@ function unequipToBag(id){
 }
 function wornInSlot(slot){return me.inventory.find(i=>i.equipped&&(i.equip_slot===slot||i.slot===slot&&['weapon','armor'].includes(slot)))}
 function renderCharacter(box){
+ hideEquipmentTooltip();
  const shell=document.createElement('div');shell.className='equipment-shell';
  const card=document.createElement('section');card.className='equipment-card';shell.appendChild(card);
  const name=document.createElement('div');name.className='equipment-name';name.textContent=me.name;card.appendChild(name);
  const close=growthButton('关闭',()=>$('growth-dialog').close());close.className='equipment-close';close.setAttribute('aria-label','关闭人物穿戴');card.appendChild(close);
  const tabs=document.createElement('nav');tabs.className='equipment-tabs';tabs.setAttribute('aria-label','人物面板');
- for(const [id,label]of [['equipment','装备'],['status','状态'],['attributes','属性'],['skills','技能']]){const b=growthButton(label,()=>{if(id==='skills'){openGrowth('skills');return}characterTab=id;renderGrowth()});b.dataset.characterTab=id;b.classList.toggle('active',characterTab===id);b.setAttribute('aria-pressed',String(characterTab===id));tabs.appendChild(b)}card.appendChild(tabs);
+ const pages=['equipment','status','attributes'];
+ for(const [step,label]of [[-1,'上一页'],[1,'下一页']]){const b=growthButton(label,()=>{characterTab=pages[(pages.indexOf(characterTab)+step+pages.length)%pages.length];renderGrowth()});b.dataset.characterStep=step;b.setAttribute('aria-label',label+'：装备、状态、属性');tabs.appendChild(b)}card.appendChild(tabs);
+
  const interior=document.createElement('div');interior.className='equipment-interior';card.appendChild(interior);
  if(characterTab==='equipment'){
   const doll=document.createElement('div');doll.className='paperdoll';doll.setAttribute('aria-label',classes[me.class]+'当前穿戴');
   const base=document.createElement('img');base.src=new URL('ui/paperdoll-'+(me.gender==='female'?'female':'male')+'.png',document.baseURI).href;base.className='paperdoll-base';base.alt='';doll.appendChild(base);
   const armor=wornInSlot('armor'),weapon=wornInSlot('weapon');
-  if(armor){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+armor.icon+'.png');im.className='paperdoll-armor';im.alt=armor.name;im.dataset.itemId=armor.id;im.style.left=Math.round((me.gender==='female'?42:41)*1.5)+'px';im.style.top='98px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.5)+'px'};doll.appendChild(im)}
-  if(weapon){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+weapon.icon+'.png');im.className='paperdoll-weapon';im.alt=weapon.name;im.dataset.itemId=weapon.id;const offset={wood_sword:[25,56],iron_sword:[23,49],bronze_sword:[15,55]}[weapon.kind]||[25,56];im.style.left=Math.round(offset[0]*1.5)+'px';im.style.top=Math.round(offset[1]*1.5)+'px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.5)+'px'};doll.appendChild(im)}
+  if(armor){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+armor.icon+'.png');im.className='paperdoll-armor';im.alt=armor.name;im.dataset.itemId=armor.id;im.style.left=Math.round((me.gender==='female'?42:41)*1.25)+'px';im.style.top='82px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.25)+'px'};doll.appendChild(im)}
+  if(weapon){const im=document.createElement('img');setImage(im,'/assets/stateitem/'+weapon.icon+'.png');im.className='paperdoll-weapon';im.alt=weapon.name;im.dataset.itemId=weapon.id;const offset={wood_sword:[25,56],iron_sword:[23,49],bronze_sword:[15,55]}[weapon.kind]||[25,56];im.style.left=Math.round(offset[0]*1.25)+'px';im.style.top=Math.round(offset[1]*1.25)+'px';im.onload=()=>{im.style.width=Math.round(im.naturalWidth*1.25)+'px'};doll.appendChild(im)}
   interior.appendChild(doll);
-  for(const [slot,label,x,y,kind]of equipmentLayout){const item=wornInSlot(slot),b=document.createElement('button');b.className='equipment-slot-button'+(['ring','bracelet','necklace'].includes(kind)?' jewelry-slot':'');b.dataset.slot=slot;b.style.left=Math.round(x*1.5)+'px';b.style.top=Math.round(y*1.5)+'px';b.classList.toggle('selected',selectedEquipmentSlot===slot);b.classList.toggle('broken',!!item&&item.durability===0);b.title=label+'：'+(item?item.name+' · '+item.description+' · 持久 '+item.durability+'/'+item.max_durability+(item.durability===0?' · 已损坏，属性失效':''):'未佩戴');b.setAttribute('aria-label',b.title);
+  for(const [slot,label,x,y,kind]of equipmentLayout){const item=wornInSlot(slot),b=document.createElement('button');b.className='equipment-slot-button'+(['ring','bracelet','necklace'].includes(kind)?' jewelry-slot':'');b.dataset.slot=slot;b.style.left=x+'px';b.style.top=y+'px';b.classList.toggle('body-equipment-slot',['weapon','armor','helmet'].includes(slot));b.classList.toggle('selected',selectedEquipmentSlot===slot);b.classList.toggle('broken',!!item&&item.durability===0);b.setAttribute('aria-label',label+'：'+(item?item.name+' · '+item.description+' · 持久 '+item.durability+'/'+item.max_durability+(item.durability===0?' · 已损坏，属性失效':''):'未佩戴'));b.onmouseenter=()=>showEquipmentTooltip(b,item,label);b.onmouseleave=hideEquipmentTooltip;b.onfocus=()=>showEquipmentTooltip(b,item,label);b.onblur=hideEquipmentTooltip;
    if(item){const im=document.createElement('img');setImage(im,'/assets/Items/'+item.icon+'.png');im.alt=item.name;b.appendChild(im)}else{const empty=document.createElement('span');empty.className='empty-equipment';empty.textContent=label;b.appendChild(empty)}
-   b.onclick=()=>{selectedEquipmentSlot=slot;renderGrowth()};b.ondblclick=()=>{if(item){unequipToBag(item.id);return}selectedItem=bagItems().find(i=>i.slot===kind)?.id||'';$('growth-dialog').close();openBag()};card.appendChild(b)
+   b.onclick=()=>{selectedEquipmentSlot=slot;card.querySelectorAll('.equipment-slot-button').forEach(e=>e.classList.toggle('selected',e===b));card.querySelector('.equipment-detail').replaceWith(buildEquipmentDetail())};b.ondblclick=()=>{if(item){unequipToBag(item.id);return}selectedItem=bagItems().find(i=>i.slot===kind)?.id||'';$('growth-dialog').close();openBag()};card.appendChild(b)
   }
-  const detail=document.createElement('div');detail.className='equipment-detail';const entry=equipmentLayout.find(e=>e[0]===selectedEquipmentSlot),it=entry?wornInSlot(entry[0]):null;
-  if(it){const title=document.createElement('strong');title.textContent=it.name+' · 持久 '+it.durability+'/'+it.max_durability;detail.appendChild(title);const p=document.createElement('p');p.textContent=it.description+(it.durability===0?' · 已损坏，属性失效':'');detail.appendChild(p);detail.appendChild(growthButton('卸下到背包',()=>unequipToBag(it.id),equipPending||bagItems().length>=40));if(bagItems().length>=40){const note=document.createElement('p');note.textContent='背包已满，请先腾出一个空格。';detail.appendChild(note)}}
-  else{const p=document.createElement('p');p.textContent=entry?entry[1]+' · 未佩戴':'点击装备查看属性与持久';detail.appendChild(p)}
-  detail.appendChild(growthButton('背包选装',()=>{selectedItem=bagItems().find(i=>i.slot===entry?.[4])?.id||'';$('growth-dialog').close();openBag()}));card.appendChild(detail);
+  card.appendChild(buildEquipmentDetail());
  }else{
   const a=me.attributes||{},stats=document.createElement('div');stats.className='equipment-stat-page';const title=document.createElement('h3');title.textContent=characterTab==='status'?'人物状态':'人物属性';stats.appendChild(title);
   const rows=characterTab==='status'?[['职业',classes[me.class]],['等级',me.level],['生命',me.hp+' / '+me.max_hp],['魔法',me.mp+' / '+me.max_mp],['经验',me.exp],['金币',me.gold]]:[['攻击',(a.attack_min??a.attack)+'–'+a.attack],['防御',a.defense],['魔法',a.magic],['道术',a.tao],['移动 / 普攻速度','+'+(a.speed||0)+'%']];
