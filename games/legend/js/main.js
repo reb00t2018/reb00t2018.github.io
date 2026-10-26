@@ -266,7 +266,7 @@ function receiveCombat(c){if(c.skill_id==='fireball'||c.skill_id==='big_fireball
   if(c.leveled){playSfx('level');$('level-toast').textContent=`等级提升 · Lv.${me.level}`;$('level-toast').classList.add('show');setTimeout(()=>$('level-toast').classList.remove('show'),2600);log('成长',`升到 ${me.level} 级！生命和攻击提升。`)}
  }
 }
-function resetControls(){onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();damageLabels.length=0;updateTarget()}
+function resetControls(){resetJoystick();onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();damageLabels.length=0;updateTarget()}
 function toggleRun(){runMode=!runMode;$('run-btn').textContent=runMode?'奔跑':'行走';$('run-btn').setAttribute('aria-pressed',String(runMode))}
 $('run-btn').textContent='行走';$('run-btn').onclick=toggleRun;
 function chooseAttack(id){if(!me)return;const m=monsters.get(id);if(!m||m.hp<=0)return;pickupTarget=null;attackTarget=id;destination=null;heldKeys.clear();heldDirection=null;nextInputAt=0;updateTarget();status(`目标：${m.name}，靠近后自动攻击；Esc 取消`)}
@@ -288,6 +288,13 @@ function pathDirection(target,adjacent=false){
 function movementPanel(id){return id==='inventory-dialog'||id==='growth-dialog'}
 function blockingDialog(){return [...document.querySelectorAll('dialog[open]')].some(d=>!movementPanel(d.id))}
 function requestMove(dir,running){const [dx,dy]=deltas[dir];if(running&&!canStep(me.x+dx,me.y+dy,dir))running=false;if(send('move',{dir,run:running}))nextInputAt=performance.now()+(running?(me.run_ms||260):(me.walk_ms||360))+20}
+function resetJoystick(){heldDirection=null;const k=$('joystick-knob');if(k)k.style.transform='translate(0,0)'}
+function joystickMove(e){const j=$('mobile-joystick');if(!j||e.pointerId!==joystickPointer)return;const r=j.querySelector('.joystick-ring').getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,dist=Math.hypot(dx,dy),max=42,k=$('joystick-knob');let kx=dx,ky=dy;if(dist>max){kx=dx/dist*max;ky=dy/dist*max}if(k)k.style.transform=`translate(${kx}px,${ky}px)`;if(dist<10){if(heldDirection!==null){heldDirection=null;inputTick()}return}const dir=Math.abs(dx)>Math.abs(dy)?(dx>0?2:6):(dy>0?4:0);if(heldDirection!==dir){heldDirection=dir;destination=null;attackTarget=null;pickupTarget=null;inputTick()}}
+function joystickEnd(e){if(e.pointerId!==joystickPointer)return;joystickPointer=null;resetJoystick()}
+let joystickPointer=null;
+$('mobile-joystick').addEventListener('pointerdown',e=>{if(!me||e.button>0)return;e.preventDefault();joystickPointer=e.pointerId;try{$('mobile-joystick').setPointerCapture(e.pointerId)}catch{};joystickMove(e)});
+$('mobile-joystick').addEventListener('pointermove',e=>{e.preventDefault();joystickMove(e)});
+$('mobile-joystick').addEventListener('pointerup',joystickEnd);$('mobile-joystick').addEventListener('pointercancel',joystickEnd);$('mobile-joystick').addEventListener('lostpointercapture',joystickEnd);
 function inputTick(){
  if(!me||me.dead||chatOpen||blockingDialog()){if(questRoute)cancelQuestRoute();return}
  if(performance.now()<nextInputAt)return;
@@ -365,7 +372,7 @@ function playSfx(kind){if(!sfxEnabled||soundContext?.state!=='running'||!soundBu
 $('sfx-btn').onclick=()=>{sfxEnabled=!sfxEnabled;localStorage.setItem('legend_sfx',sfxEnabled?'on':'off');soundLabel();unlockSound()};
 $('sfx-volume').value=localStorage.getItem('legend_sfx_volume')||70;$('sfx-volume').oninput=()=>localStorage.setItem('legend_sfx_volume',$('sfx-volume').value);
 
-function stopActions(){questRoute=null;$('cancel-route').hidden=true;pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;updateTarget()}
+function stopActions(){questRoute=null;resetJoystick();$('cancel-route').hidden=true;pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;updateTarget()}
 function updateVitals(){
  if(!me)return;const hp=Math.max(0,Math.min(1,me.hp/me.max_hp)),mp=Math.max(0,Math.min(1,me.mp/me.max_mp));
  $('classic-hp').style.clipPath=`inset(${(1-hp)*100}% 50% 0 0)`;$('classic-mp').style.clipPath=`inset(${(1-mp)*100}% 0 0 50%)`;
