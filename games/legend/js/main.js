@@ -533,7 +533,7 @@ function renderGrowth(){if(!me)return;const dialog=$('growth-dialog'),box=$('gro
 function castSkill(id){if(!me||me.dead)return;const sk=me.skills?.find(s=>s.id===id);if(!sk?.rank||sk.passive){status('该技能未学习或为被动技能');return}let target=null;if(sk.kind==='damage'){target=monsters.get(attackTarget)||[...monsters.values()].filter(m=>m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=sk.range).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];if(!target){status('施法范围内没有目标');return}}stopActions();send('cast',{skill_id:id,target_id:target?.id||0})}
 
 let characterTab='equipment',selectedEquipmentSlot='';
-const equipmentLayout=[['weapon','武器',75,120,'weapon'],['armor','衣服',127,153,'armor'],['helmet','头盔',232,130,'helmet'],['necklace','项链',232,178,'necklace'],['charm','勋章',232,82,'charm'],['bracelet_left','左手镯',58,226,'bracelet'],['bracelet_right','右手镯',232,226,'bracelet'],['ring_left','左戒指',58,270,'ring'],['ring_right','右戒指',232,270,'ring'],['stone','宝石',58,324,'stone'],['belt','腰带',101,324,'belt'],['boots','靴子',144,324,'boots'],['seal','印记',187,324,'seal']];
+const equipmentLayout=[['weapon','武器',75,120,'weapon'],['armor','衣服',127,153,'armor'],['helmet','头盔',232,82,'helmet'],['necklace','项链',232,130,'necklace'],['bracelet_left','左手镯',58,226,'bracelet'],['bracelet_right','右手镯',232,226,'bracelet'],['ring_left','左戒指',58,270,'ring'],['ring_right','右戒指',232,270,'ring'],['stone','宝石',58,324,'stone'],['belt','腰带',101,324,'belt'],['boots','靴子',144,324,'boots'],['seal','印记',187,324,'seal']];
 let equipmentTooltip=null;
 function hideEquipmentTooltip(){equipmentTooltip?.remove();equipmentTooltip=null}
 function showEquipmentTooltip(button,item,label){
