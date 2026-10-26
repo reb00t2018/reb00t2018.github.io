@@ -194,6 +194,7 @@ function draw(){
   const g=p.gender==='female'?600:0,base=(p.armor_base??(p.armor?1200:0))+g,af=frameFor(playerAnimations,motions.get(p.id),p.dir,p.id),body=base+af.index,weapon=(p.weapon_base||1200)+g+af.index;
   for(let i=0;i<af.a.count;i++){sprite('Hum',base+af.a.offset+p.dir*af.a.stride+i);if(p.weapon)sprite('Weapon',(p.weapon_base||1200)+g+af.a.offset+p.dir*af.a.stride+i)}
   if(p.weapon&&[0,1,7].includes(p.dir))actor('Weapon',weapon,x,py);
+  if(p.helmet_icon)actor('stateitem',p.helmet_icon,x,py);
   const bodyFrame=actor('Hum',body,x,py,base+p.dir*8);if(p.id!==me.id&&bodyFrame?.ready)playerHits.push({p,x:x+bodyFrame.offsetX-6,y:py+bodyFrame.offsetY-10,w:bodyFrame.width+12,h:bodyFrame.height+20});
   if(p.weapon&&![0,1,7].includes(p.dir))actor('Weapon',weapon,x,py);
   label(p.name,x+24,py-55,p.red_name?'#ff4141':'#fff1be');const bubble=chatBubbles.get(p.id);if(bubble&&bubble.until>now)label(bubble.text,x+24,py-80,'#fff5cd');
