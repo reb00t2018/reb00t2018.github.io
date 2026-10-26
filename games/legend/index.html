@@ -269,6 +269,8 @@
  #skill-hotbar{bottom:142px!important}#status{bottom:142px!important}
  #hud{max-width:38vw}
 }
+
+#growth-dialog.classic-character{padding:0!important;max-width:calc(100vw - 8px)!important}
 </style><script src="js/config.js?v=round23"></script><script>
 'use strict';
 const SERVER=(window.LEGEND_SERVER||'').replace(/\/$/,'');
@@ -839,7 +841,8 @@ function wornInSlot(slot){return me.inventory.find(i=>i.equipped&&(i.equip_slot=
 function addPaperdollLayer(doll,item,layer){
  const im=document.createElement('img');im.className='paperdoll-'+layer;im.alt=item.name;im.dataset.itemId=item.id;im.style.visibility='hidden';doll.appendChild(im);
  const loaded=new Promise((resolve,reject)=>{im.onload=()=>resolve();setImage(im,'/assets/stateitem/'+item.icon+'.png',reject)});
- const metadata=ASSET_MANIFEST?metaFor('stateitem').then(m=>{if(!m[item.icon])throw Error('missing metadata');return m[item.icon]}):fetchAsset('/assets/stateitem/'+item.icon+'.json').then(r=>{if(!r.ok)throw Error('metadata unavailable');return r.json()});
+ const singleMetadata=()=>fetchAsset('/assets/stateitem/'+item.icon+'.json').then(r=>{if(!r.ok)throw Error('metadata unavailable');return r.json()});
+ const metadata=ASSET_MANIFEST?metaFor('stateitem').then(m=>m[item.icon]||singleMetadata(),singleMetadata):singleMetadata();
  const originX=me.gender==='female'?-6:-7;
  Promise.all([loaded,metadata]).then(([,m])=>{if(!Number.isFinite(m.offsetX)||!Number.isFinite(m.offsetY))throw Error('invalid offset');im.style.left=Math.round((m.offsetX+originX)*1.25)+'px';im.style.top=Math.round((m.offsetY+44)*1.25)+'px';im.style.width=Math.round(im.naturalWidth*1.25)+'px';im.style.height=Math.round(im.naturalHeight*1.25)+'px';im.style.visibility='visible'}).catch(()=>{im.remove();if(doll.isConnected)status('人物装备图暂时未能读取，请稍后重试')});
 }
