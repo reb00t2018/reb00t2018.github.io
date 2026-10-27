@@ -65,6 +65,8 @@
 </style>
 <div id="login-screen"><div class="stage" id="stage"><div class="gate-ui"><div class="brand"><h1>热血传奇</h1><p>重返银杏山谷</p></div><button class="gate-action" id="gate-btn">进入玛法</button><div class="caption">本地重建体验 · 原客户端画面素材</div></div><div class="select-ui"><button id="role-0" class="role-card" aria-label="选择第一个角色"><img id="portrait-0" alt=""><span id="empty-0">＋ 创建角色</span></button><button id="role-1" class="role-card second" aria-label="选择第二个角色"><img id="portrait-1" alt=""><span id="empty-1">＋ 创建角色</span></button><div id="stats-0" class="slot-stats"></div><div id="stats-1" class="slot-stats second"></div><div class="selection-actions"><div id="selection-name">请选择或创建角色</div><button id="login-btn" disabled>开始游戏</button><button id="create-btn">创建角色</button><button id="back-btn">返回石门</button></div></div></div></div>
 <div id="game-screen">
+<div id="touch-cancel" hidden aria-live="polite">拖到这里取消</div>
+<div id="touch-aim-hint" hidden aria-live="polite"></div>
 <div id="mobile-quick" aria-label="手机快捷菜单">
  <button type="button" data-mobile="quest">任务</button><button type="button" data-mobile="map">地图</button>
  <button type="button" data-mobile="bag">背包</button><button type="button" data-mobile="chat">聊天</button>
@@ -287,7 +289,8 @@
 }
 
 #growth-dialog.classic-character{padding:0!important;max-width:calc(100vw - 8px)!important}
-</style><script src="js/config.js?v=round23"></script><script>
+</style><link rel="stylesheet" href="mobile-combat.css?v=touch-cast1">
+<script src="js/config.js?v=round23"></script><script>
 'use strict';
 const SERVER=(window.LEGEND_SERVER||'').replace(/\/$/,'');
 const ASSET_BASE=(window.LEGEND_ASSET_BASE||'').replace(/\/$/,'');
@@ -407,7 +410,7 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
   if(m.op==='leave'){players.delete(m.id);motions.delete(m.id)}
   if(m.op==='chat')receiveChat(m.data);
   if(m.op==='dialogue'){showDialogue(m.data);status()}
-  if(m.op==='error'){if(bagRepairNPC)bagRepairMessage=m.msg;merchantPending=false;merchantMessage=m.msg;bagPending='';$('growth-feedback').textContent=m.msg;status(m.msg);log('提示',m.msg);equipPending=false;renderBag();renderServices();if($('growth-dialog').open)renderGrowth();if(!me)ws.close()}
+  if(m.op==='error'){if(typeof clearTouchCooldown==='function')clearTouchCooldown();if(bagRepairNPC)bagRepairMessage=m.msg;merchantPending=false;merchantMessage=m.msg;bagPending='';$('growth-feedback').textContent=m.msg;status(m.msg);log('提示',m.msg);equipPending=false;renderBag();renderServices();if($('growth-dialog').open)renderGrowth();if(!me)ws.close()}
   redraw();
  };
 };
@@ -497,6 +500,7 @@ function draw(){
  for(let i=damageLabels.length-1;i>=0;i--){const d=damageLabels[i],age=now-d.start;if(age>1000){damageLabels.splice(i,1);continue}ctx.globalAlpha=1-age/1100;ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillStyle=d.color;ctx.fillText(d.text,d.x*TW-cx+24,d.y*TH-cy-35-age/25);ctx.globalAlpha=1}
  for(let i=guardArrows.length-1;i>=0;i--){const a=guardArrows[i],t=(now-a.start)/300;if(t>1){guardArrows.splice(i,1);continue}const dx=(a.tx-a.x)*TW,dy=(a.ty-a.y)*TH,x=a.x*TW-cx+24+dx*t,y=a.y*TH-cy-40+dy*t;ctx.strokeStyle='#ffe7ab';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-dx*.12,y-dy*.12);ctx.lineTo(x,y);ctx.stroke()}
  drawSkillEffects(now,cx,cy);
+ if(typeof drawTouchAim==='function')drawTouchAim(cx,cy);
  if(destination){const x=destination.x*TW-cx+24,y=destination.y*TH-cy+16;ctx.strokeStyle='#e4c27a';ctx.beginPath();ctx.ellipse(x,y,16,8,0,0,Math.PI*2);ctx.stroke()}
 }
 function gameCenterY(){return (canvas.height-190*classicScale)/2}
@@ -557,7 +561,7 @@ function receiveCombat(c){if(c.skill_id||c.skill_name){const p=players.get(c.att
   if(c.leveled){playSfx('level');$('level-toast').textContent=`等级提升 · Lv.${me.level}`;$('level-toast').classList.add('show');setTimeout(()=>$('level-toast').classList.remove('show'),2600);log('成长',`升到 ${me.level} 级！生命和攻击提升。`)}
  }
 }
-function resetControls(){resetJoystick();skillHotbarSig="";onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();damageLabels.length=0;updateTarget()}
+function resetControls(){if(typeof clearTouchCooldown==='function')clearTouchCooldown();resetJoystick();skillHotbarSig="";onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();damageLabels.length=0;updateTarget()}
 function toggleRun(){runMode=!runMode;$('run-btn').textContent=runMode?'奔跑':'行走';$('run-btn').setAttribute('aria-pressed',String(runMode))}
 $('run-btn').textContent='行走';$('run-btn').onclick=toggleRun;
 function chooseAttack(id){if(!me)return;const m=monsters.get(id);if(!m||m.hp<=0)return;pickupTarget=null;attackTarget=id;destination=null;heldKeys.clear();heldDirection=null;nextInputAt=0;updateTarget();status(`目标：${m.name}，靠近后自动攻击；Esc 取消`)}
@@ -579,11 +583,11 @@ function pathDirection(target,adjacent=false){
 function movementPanel(id){return id==='inventory-dialog'||id==='growth-dialog'}
 function blockingDialog(){return [...document.querySelectorAll('dialog[open]')].some(d=>!movementPanel(d.id))}
 function requestMove(dir,running){const [dx,dy]=deltas[dir];if(running&&!canStep(me.x+dx,me.y+dy,dir))running=false;if(send('move',{dir,run:running}))nextInputAt=performance.now()+(running?(me.run_ms||260):(me.walk_ms||360))+20}
-function resetJoystick(){heldDirection=null;const k=$('joystick-knob');if(k)k.style.transform='translate(0,0)'}
-function joystickMove(e){const j=$('mobile-joystick');if(!j||e.pointerId!==joystickPointer)return;const r=j.querySelector('.joystick-ring').getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,dist=Math.hypot(dx,dy),max=42,k=$('joystick-knob');let kx=dx,ky=dy;if(dist>max){kx=dx/dist*max;ky=dy/dist*max}if(k)k.style.transform=`translate(${kx}px,${ky}px)`;if(dist<10){if(heldDirection!==null){heldDirection=null;inputTick()}return}const dir=Math.abs(dx)>Math.abs(dy)?(dx>0?2:6):(dy>0?4:0);if(heldDirection!==dir){heldDirection=dir;destination=null;attackTarget=null;pickupTarget=null;inputTick()}}
+function resetJoystick(){joystickPointer=null;heldDirection=null;const k=$('joystick-knob');if(k)k.style.transform='translate(0,0)'}
+function joystickMove(e){const j=$('mobile-joystick');if(!j||e.pointerId!==joystickPointer)return;const r=j.querySelector('.joystick-ring').getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,dist=Math.hypot(dx,dy),max=42,k=$('joystick-knob');let kx=dx,ky=dy;if(dist>max){kx=dx/dist*max;ky=dy/dist*max}if(k)k.style.transform=`translate(${kx}px,${ky}px)`;if(dist<10){if(heldDirection!==null){heldDirection=null;inputTick()}return}const dir=(Math.round(Math.atan2(dx,-dy)/(Math.PI/4))+8)%8;if(heldDirection!==dir){heldDirection=dir;destination=null;attackTarget=null;pickupTarget=null;inputTick()}}
 function joystickEnd(e){if(e.pointerId!==joystickPointer)return;joystickPointer=null;resetJoystick()}
 let joystickPointer=null;
-$('mobile-joystick').addEventListener('pointerdown',e=>{if(!me||e.button>0)return;e.preventDefault();joystickPointer=e.pointerId;try{$('mobile-joystick').setPointerCapture(e.pointerId)}catch{};joystickMove(e)});
+$('mobile-joystick').addEventListener('pointerdown',e=>{if(!me||me.dead||e.button>0||joystickPointer!==null||blockingDialog())return;e.preventDefault();joystickPointer=e.pointerId;try{$('mobile-joystick').setPointerCapture(e.pointerId)}catch{};joystickMove(e)});
 $('mobile-joystick').addEventListener('pointermove',e=>{e.preventDefault();joystickMove(e)});
 $('mobile-joystick').addEventListener('pointerup',joystickEnd);$('mobile-joystick').addEventListener('pointercancel',joystickEnd);$('mobile-joystick').addEventListener('lostpointercapture',joystickEnd);
 function inputTick(){
@@ -663,7 +667,7 @@ function playSfx(kind){if(!sfxEnabled||soundContext?.state!=='running'||!soundBu
 $('sfx-btn').onclick=()=>{sfxEnabled=!sfxEnabled;localStorage.setItem('legend_sfx',sfxEnabled?'on':'off');soundLabel();unlockSound()};
 $('sfx-volume').value=localStorage.getItem('legend_sfx_volume')||70;$('sfx-volume').oninput=()=>localStorage.setItem('legend_sfx_volume',$('sfx-volume').value);
 
-function stopActions(){questRoute=null;resetJoystick();$('cancel-route').hidden=true;pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;updateTarget()}
+function stopActions(){if(typeof cancelTouchAim==='function')cancelTouchAim();questRoute=null;resetJoystick();$('cancel-route').hidden=true;pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;updateTarget()}
 function updateVitals(){
  if(!me)return;const hp=Math.max(0,Math.min(1,me.hp/me.max_hp)),mp=Math.max(0,Math.min(1,me.mp/me.max_mp));
  $('classic-hp').style.clipPath=`inset(${(1-hp)*100}% 50% 0 0)`;$('classic-mp').style.clipPath=`inset(${(1-mp)*100}% 0 0 50%)`;
@@ -818,7 +822,7 @@ function renderServices(){const box=$('npc-services');box.replaceChildren();if(!
  renderMerchant();
 }
 
-function growthHUD(){if(!me)return;const q=me.journey;$('quest-tracker').textContent=q?('主线 · '+q.title+'\n'+(q.target?q.kills+' / '+q.target+' · ':'')+(q.ready?'可交付 · 点击查看':q.completed?'主线已完成':'点击查看目标与奖励')):'';$('stop-training').hidden=!me.training;$('stop-training').textContent=me.training?'练功中 · 停止':'停止练功';const box=$('skill-hotbar');const touch=matchMedia('(max-width:820px), (pointer:coarse) and (max-width:1024px)').matches;const skills=activeSkills();const sig=(touch?'t':'d')+'|'+skills.map(s=>s.id+':'+s.rank).join('|')+'|'+(me.dead?1:0);if(sig!==skillHotbarSig){skillHotbarSig=sig;box.replaceChildren();for(const [i,s]of skills.entries()){const b=document.createElement('button');if(touch){const name=document.createElement('span');name.textContent=s.name;const meta=document.createElement('small');meta.textContent='F'+(i+1)+(s.rank?' · '+s.rank:' · 未学');b.append(name,meta);b.classList.add('skill-orb');b.title=s.name+' · '+(s.rank?'等级 '+s.rank:'未学习')+' · 魔法 '+s.mp;b.setAttribute('aria-label','释放'+s.name)}else b.textContent='F'+(i+1)+' / '+(i+1)+' '+s.name+(s.rank?' Lv.'+s.rank:' 未学习');b.disabled=!s.rank||me.dead;b.onclick=()=>castSkill(s.id);box.appendChild(b)}}}
+function growthHUD(){if(!me)return;const q=me.journey;$('quest-tracker').textContent=q?('主线 · '+q.title+'\n'+(q.target?q.kills+' / '+q.target+' · ':'')+(q.ready?'可交付 · 点击查看':q.completed?'主线已完成':'点击查看目标与奖励')):'';$('stop-training').hidden=!me.training;$('stop-training').textContent=me.training?'练功中 · 停止':'停止练功';const box=$('skill-hotbar');const touch=matchMedia('(max-width:820px), (pointer:coarse) and (max-width:1024px)').matches;const skills=activeSkills();const sig=(touch?'t':'d')+'|'+skills.map(s=>s.id+':'+s.rank).join('|')+'|'+(me.dead?1:0);if(sig!==skillHotbarSig){skillHotbarSig=sig;box.replaceChildren();for(const [i,s]of skills.entries()){const b=document.createElement('button');if(touch){const name=document.createElement('span');name.textContent=s.name;const meta=document.createElement('small');meta.textContent=s.mp+'蓝';b.append(name,meta);b.classList.add('skill-orb');b.title=s.name+' · '+(s.rank?'等级 '+s.rank:'未学习')+' · 魔法 '+s.mp;b.setAttribute('aria-label','释放'+s.name)}else b.textContent='F'+(i+1)+' / '+(i+1)+' '+s.name+(s.rank?' Lv.'+s.rank:' 未学习');b.disabled=!s.rank||me.dead;if(touch&&typeof bindTouchSkill==='function')bindTouchSkill(b,s);else b.onclick=()=>castSkill(s.id);box.appendChild(b)}}}
 function openGrowth(tab){if(!me)return;stopActions();const dialog=$('growth-dialog');if(dialog.open&&growthTab===tab){dialog.close();return}growthTab=tab;$('growth-feedback').textContent='';renderGrowth();if(!dialog.open)dialog.show()}
 document.querySelectorAll('[data-mobile]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const a=b.dataset.mobile;if(a==='attack')attackNearest();else if(a==='pickup')pickupNearest();else if(a==='run'){toggleRun();b.textContent=runMode?'奔跑中':'奔跑'}else if(a==='chat'){const text=prompt('聊天内容（附近频道）');if(text&&text.trim())send('chat',{text:text.trim(),channel:'nearby',recipient:''})}else if(a==='talk'){const n=nearestNPC();n?talkToNPC(n):status('附近没有可交谈的NPC')}else if(a==='bag')openBag();else if(a==='skills')openGrowth('skills');else if(a==='character')openGrowth('attributes');else if(a==='map')openMap();else if(a==='quest')openGrowth('quest')}));
 $('quest-btn').onclick=()=>openGrowth('quest');$('quest-tracker').onclick=()=>openGrowth('quest');$('skills-btn').onclick=()=>openGrowth('skills');$('attributes-btn').onclick=()=>openGrowth('attributes');$('skills-hud-btn').onclick=()=>openGrowth('skills');$('character-hud-btn').onclick=()=>openGrowth('attributes');$('close-growth').onclick=()=>$('growth-dialog').close();$('stop-training').onclick=()=>send('train',{skill_id:''});
@@ -828,7 +832,24 @@ function renderGrowth(){if(!me)return;const dialog=$('growth-dialog'),box=$('gro
  if(growthTab==='skills'){const perk=document.createElement('p');perk.textContent=me.level<20?'成长福利：达到20级自动学会本职业基础技能，无需另买技能书。':'本职业20级以内的基础技能已自动学会，后续高阶技能仍需技能书。';box.appendChild(perk);const all=me.skills||[],sk=all.find(v=>v.id===selectedSkillId)||all[0];if(!sk)return;selectedSkillId=sk.id;const panel=document.createElement('div');panel.className='skill-book-panel';const close=growthButton('关闭',()=>dialog.close());close.className='panel-close';close.setAttribute('aria-label','关闭技能书');panel.appendChild(close);const scroll=document.createElement('img');scroll.className='skill-scroll';setImage(scroll,'/assets/Items/261.png');scroll.alt='客户端卷轴素材';panel.appendChild(scroll);const tabs=document.createElement('div');tabs.className='skill-tabs';for(const row of all){const b=growthButton(row.name+' · '+(row.rank?'技能 '+row.rank+' 级':'未学习'),()=>{selectedSkillId=row.id;renderGrowth()});b.classList.toggle('selected',row.id===sk.id);tabs.appendChild(b)}panel.appendChild(tabs);const detail=document.createElement('div');detail.className='skill-detail';const title=document.createElement('strong');title.textContent=sk.name+' · '+(sk.rank?'熟练度 '+sk.practice+'/60':'技能书 '+sk.books+' 本');detail.appendChild(title);const info=document.createElement('p');info.textContent='要求 Lv.'+sk.required_level+' · '+(sk.passive?'被动生效':'消耗 '+sk.mp+' MP · '+(sk.range?'距离 '+sk.range:'自身治疗'));detail.appendChild(info);const actions=document.createElement('div');actions.className='actions';actions.appendChild(growthButton('购买技能书 · '+sk.price+' 金币',()=>send('buy_book',{skill_id:sk.id}),!!sk.rank||sk.books>0));actions.appendChild(growthButton('学习',()=>send('learn',{skill_id:sk.id}),!!sk.rank||!sk.books||me.level<sk.required_level));if(sk.rank){actions.appendChild(growthButton(me.training===sk.id?'停止练功':'自动练功',()=>send('train',{skill_id:me.training===sk.id?'':sk.id}),sk.rank>=3));if(!sk.passive)actions.appendChild(growthButton('施放',()=>{dialog.close();castSkill(sk.id)}))}detail.appendChild(actions);panel.appendChild(detail);box.appendChild(panel);const help=document.createElement('p');help.className='skill-book-help';help.textContent='靠近向导、武馆教头或书店可购买与练功。F1–F8 或数字 1–8 施放快捷栏中的主动技能；移动、战斗或离线会停止练功。';box.appendChild(help);return}
  renderCharacter(box);
 }
-function castSkill(id){if(!me||me.dead)return;const sk=me.skills?.find(s=>s.id===id);if(!sk?.rank||sk.passive){status('该技能未学习或为被动技能');return}let target=null;if(sk.kind==='damage'){const inRange=m=>m&&m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=sk.range;const selected=monsters.get(attackTarget);target=(inRange(selected)?selected:null)||[...monsters.values()].filter(inRange).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];if(!target){status('施法范围内没有目标');return}}stopActions();send('cast',{skill_id:id,target_id:target?.id||0})}
+function castSkill(id,options={}){
+ if(!me||me.dead)return false;
+ const sk=me.skills?.find(s=>s.id===id);
+ if(!sk?.rank||sk.passive){status('该技能未学习或为被动技能');return false}
+ if(me.mp<sk.mp){status('魔法不足');return false}
+ let target=null;
+ if(sk.kind==='damage'){
+  const inRange=m=>m&&m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=sk.range;
+  const selected=options.target||monsters.get(attackTarget);
+  target=inRange(selected)?selected:null;
+  if(!target&&!options.strictTarget)target=[...monsters.values()].filter(inRange).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];
+  if(!target){status('施法范围内没有目标');return false}
+ }
+ if(options.keepMoving){cancelQuestRoute();pickupTarget=null;destination=null;attackTarget=null;updateTarget()}else stopActions();
+ const sent=send('cast',{skill_id:id,target_id:target?.id||0});
+ if(!sent)status('连接已断开，请重新进入游戏');
+ return sent;
+}
 
 let characterTab='equipment',selectedEquipmentSlot='';
 const equipmentLayout=[['weapon','武器',75,120,'weapon'],['armor','衣服',127,153,'armor'],['helmet','头盔',232,82,'helmet'],['necklace','项链',232,130,'necklace'],['bracelet_left','左手镯',58,226,'bracelet'],['bracelet_right','右手镯',232,226,'bracelet'],['ring_left','左戒指',58,270,'ring'],['ring_right','右戒指',232,270,'ring'],['stone','宝石',58,324,'stone'],['belt','腰带',101,324,'belt'],['boots','靴子',144,324,'boots'],['seal','印记',187,324,'seal']];
@@ -1074,4 +1095,4 @@ function tickQuestRoute(){const q=questRoute;if(me.map_id!==q.map||me.dead){canc
  requestMove(dir,canRun)}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key))cancelQuestRoute()});
 
-</script></html>
+</script><script src="js/touch-controls.js?v=touch-cast1"></script></html>
