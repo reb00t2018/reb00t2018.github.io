@@ -65,8 +65,7 @@
 </style>
 <div id="login-screen"><div class="stage" id="stage"><div class="gate-ui"><div class="brand"><h1>热血传奇</h1><p>重返银杏山谷</p></div><button class="gate-action" id="gate-btn">进入玛法</button><div class="caption">本地重建体验 · 原客户端画面素材</div></div><div class="select-ui"><button id="role-0" class="role-card" aria-label="选择第一个角色"><img id="portrait-0" alt=""><span id="empty-0">＋ 创建角色</span></button><button id="role-1" class="role-card second" aria-label="选择第二个角色"><img id="portrait-1" alt=""><span id="empty-1">＋ 创建角色</span></button><div id="stats-0" class="slot-stats"></div><div id="stats-1" class="slot-stats second"></div><div class="selection-actions"><div id="selection-name">请选择或创建角色</div><button id="login-btn" disabled>开始游戏</button><button id="create-btn">创建角色</button><button id="back-btn">返回石门</button></div></div></div></div>
 <div id="game-screen">
-<div id="touch-cancel" hidden aria-live="polite">拖到这里取消</div>
-<div id="touch-aim-hint" hidden aria-live="polite"></div>
+<div id="touch-cancel" hidden aria-live="polite">拖到这里取消</div><div id="touch-aim-hint" hidden aria-live="polite"></div>
 <div id="mobile-quick" aria-label="手机快捷菜单">
  <button type="button" data-mobile="quest">任务</button><button type="button" data-mobile="map">地图</button>
  <button type="button" data-mobile="bag">背包</button><button type="button" data-mobile="chat">聊天</button>
@@ -289,8 +288,7 @@
 }
 
 #growth-dialog.classic-character{padding:0!important;max-width:calc(100vw - 8px)!important}
-</style><link rel="stylesheet" href="mobile-combat.css?v=touch-cast1">
-<script src="js/config.js?v=round23"></script><script>
+</style><link rel="stylesheet" href="mobile-combat.css?v=touch-cast1"><script src="js/config.js?v=round23"></script><script>
 'use strict';
 const SERVER=(window.LEGEND_SERVER||'').replace(/\/$/,'');
 const ASSET_BASE=(window.LEGEND_ASSET_BASE||'').replace(/\/$/,'');
