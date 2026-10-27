@@ -13,10 +13,11 @@ const assetURL=p=>{
 };
 const imageURL=p=>ASSET_WEBP?assetURL(p).replace(/\.png$/,'.webp'):assetURL(p);
 function setImage(im,path,onerror){
- const local=localAssetURL(path);
- im.onerror=()=>{if(ASSET_CDN&&im.src!==new URL(local,location.href).href){im.src=local;im.onerror=null}else{if(onerror)onerror();else status('图片读取失败，请刷新重试')}};
+ const local=ASSET_WEBP?localAssetURL(path).replace(/\.png$/,'.webp'):localAssetURL(path);let fallback=false;
+ im.onerror=()=>{if(ASSET_CDN&&!fallback&&im.src!==new URL(local,location.href).href){fallback=true;im.src=local;return}if(onerror)onerror(Error('图片读取失败'));else status('图片读取失败，请稍后重试')};
  im.src=imageURL(path);
 }
+
 async function fetchAsset(path){
  const remote=assetURL(path);
  try{const r=await fetch(remote);if(!r.ok)throw Error('asset '+r.status);return r}
@@ -109,12 +110,12 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
   if(m.op==='revived'){motions.delete(m.data.id);players.delete(m.data.id);if(m.data.id===me?.id){me=m.data;stopActions();if($('death-dialog').open)$('death-dialog').close();loadRegion()}applyPlayer(m.data,false);hud();if(m.data.id===me?.id)status('已回到安全区，生命与魔法恢复')}
   if(m.op==='welcome'){me=m.data;$('classic-hud').hidden=false;document.body.classList.add('in-game');players.set(me.id,me);$('game-screen').style.display='block';$('login-screen').style.display='none';$('game-actions').hidden=false;status();loadRegion();hud();updateMapMusic();log('系统',`${me.name}来到${currentScene.name}。打开背包，准备好衣服与木剑。`)}
   if(m.op==='players'){for(const p of m.data)applyPlayer(p,false)}
-  if(m.op==='monsters')updateMonsters(m.data);
+  if(m.op==='monsters')updateMonsters(m.data);if(m.op==='pet_update')applyPlayer(m.data);
   if(m.op==='party_invite'){status(m.data.from+' 邀请你组队，输入 /接受');log('组队',m.data.from+' 邀请你组队，输入 /接受')}if(m.op==='party'){renderParty(m.data)}if(m.op==='combat')receiveCombat(m.data);if(m.op==='rankings')receiveRankings(m.data);if(m.op==='skill_effect'){const p=m.data.player;addSkillEffect(m.data.skill||'heal',p.x,p.y,p.x,p.y)}
   if(m.op==='npcs'){npcs=m.data;hud()}
   if(m.op==='join')applyPlayer(m.data,false);
   if(m.op==='move'||m.op==='inventory'){applyPlayer(m.data);if(m.data.id===me?.id){if(m.op==='inventory'){equipPending=false;if(bagPending){status(bagPending==='sort'?'背包已按类别整理并保存':'所选物品已销毁');bagPending='';bagSelection.clear();discardIds=[];bagMulti=false;}renderBag();if($('growth-dialog').open)renderGrowth();status('背包与装备已保存')}}}
-  if(m.op==='leave'){players.delete(m.id);motions.delete(m.id)}
+  if(m.op==='leave'){players.delete(m.id);motions.delete(m.id);companionMotions.delete(m.id)}
   if(m.op==='chat')receiveChat(m.data);
   if(m.op==='dialogue'){showDialogue(m.data);status()}
   if(m.op==='error'){if(typeof clearTouchCooldown==='function')clearTouchCooldown();if(bagRepairNPC)bagRepairMessage=m.msg;merchantPending=false;merchantMessage=m.msg;bagPending='';$('growth-feedback').textContent=m.msg;status(m.msg);log('提示',m.msg);equipPending=false;renderBag();renderServices();if($('growth-dialog').open)renderGrowth();if(!me)ws.close()}
@@ -146,14 +147,45 @@ function musicLabel(){$('music-btn').textContent=!bgm.getAttribute('src')?'♫ �
 function setMusic(original){const local=localAssetURL(original),path=assetURL(original);if(!path){if(bgm.getAttribute('src')){bgm.pause();bgm.removeAttribute('src');bgm.load()}musicLabel();return}const next=new URL(path,location.href).href;if(bgm.src!==next){bgm.pause();bgm.src=path;bgm.dataset.local=local;bgm.onerror=()=>{if(path!==local&&bgm.getAttribute('src')!==local){bgm.src=local;bgm.load()}else status('音乐读取失败，请刷新重试')};bgm.load()}playMusic();musicLabel()}
 function playMusic(){if(musicAllowed&&bgm.getAttribute('src'))bgm.play().then(musicLabel).catch(()=>{musicLabel()})}
 $('music-btn').onclick=()=>{musicAllowed=bgm.paused;if(musicAllowed)playMusic();else bgm.pause();localStorage.setItem('legend_music',musicAllowed?'on':'off');musicLabel()};$('volume').oninput=()=>{bgm.volume=Number($('volume').value)/100;localStorage.setItem('legend_volume',String(bgm.volume))};bgm.onplay=musicLabel;bgm.onpause=musicLabel;bgm.onerror=()=>status('音乐读取失败，请刷新重试');musicLabel();
-async function loadRegion(){if(!me)return;const epoch=sceneEpoch,mapID=me.map_id;const x=Math.max(0,Math.floor((me.x-24)/16)*16),y=Math.max(0,Math.floor((me.y-24)/16)*16),key=x+','+y;if(regionCache.has(key))return;regionCache.add(key);try{const r=await fetch(`/api/map?map_id=${mapID}&x=${x}&y=${y}&w=64&h=64`);if(!r.ok)throw Error('地图读取失败');const d=await r.json();if(epoch!==sceneEpoch)return;for(const c of d.cells)mapCache.set(`${c.x},${c.y}`,c);invalidateBackground();redraw()}catch(e){status(e.message+'，刷新重试')}}
-const libMeta=new Map();
-function metaFor(lib){if(!libMeta.has(lib))libMeta.set(lib,fetchAsset(`/assets/${lib}/meta.json?v=all8`).then(r=>{if(!r.ok)throw Error();return r.json()}));return libMeta.get(lib)}
-function sprite(lib,index){if(index<0)return null;const key=`${lib}/${index}`;if(spriteCache.has(key))return spriteCache.get(key);const f={ready:false};spriteCache.set(key,f);
- const singleMetadata=()=>fetchAsset(`/assets/${key}.json`).then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()});
- const meta=ASSET_MANIFEST?metaFor(lib).then(m=>m[index]||singleMetadata(),singleMetadata):singleMetadata();
- Promise.all([meta,new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,`/assets/${key}.png`,reject)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});invalidateBackground();redraw()}).catch(()=>{f.failed=true});return f;
+const regionPending=new Map(),regionRetryAt=new Map();let questController=null;
+async function loadMapChunk(query,signal){
+ let last;
+ for(let attempt=0;attempt<3;attempt++){
+  if(signal?.aborted)throw new DOMException('寻路已取消','AbortError');
+  const controller=new AbortController();let timer;
+  const abort=()=>controller.abort();signal?.addEventListener('abort',abort,{once:true});
+  try{
+   const operation=(async()=>{const r=await fetch('/api/map?'+new URLSearchParams(query),{signal:controller.signal});if(!r.ok)throw Error('地图读取失败（'+r.status+'）');const d=await r.json();if(!Array.isArray(d.cells)||!d.cells.length||d.cells.some(c=>!Number.isInteger(c.x)||!Number.isInteger(c.y)||typeof c.blocked!=='boolean'))throw Error('地图数据不完整');return d})();
+   return await Promise.race([operation,new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('地图读取超时'))},8000)})]);
+  }catch(e){last=e;if(signal?.aborted)throw new DOMException('寻路已取消','AbortError');if(attempt<2)await new Promise(r=>setTimeout(r,250*(attempt+1)))}
+  finally{clearTimeout(timer);signal?.removeEventListener('abort',abort)}
+ }
+ throw last;
 }
+async function loadRegion(force=false){
+ if(!me)return false;const epoch=sceneEpoch,mapID=me.map_id,x=Math.max(0,Math.floor((me.x-24)/16)*16),y=Math.max(0,Math.floor((me.y-24)/16)*16),key=x+','+y,requestKey=epoch+':'+mapID+':'+key;
+ if(regionCache.has(key))return true;
+ if(regionPending.has(requestKey))return regionPending.get(requestKey);
+ if(!force&&(regionRetryAt.get(requestKey)||0)>performance.now())return false;
+ const pending=(async()=>{try{const d=await loadMapChunk({map_id:mapID,x,y,w:64,h:64});if(epoch!==sceneEpoch||me?.map_id!==mapID)return false;for(const c of d.cells)mapCache.set(c.x+','+c.y,c);regionCache.add(key);regionRetryAt.delete(requestKey);invalidateBackground();redraw();return true}
+ catch(e){regionRetryAt.set(requestKey,performance.now()+2000);setTimeout(()=>{if(epoch===sceneEpoch&&me?.map_id===mapID&&!regionCache.has(key))loadRegion(true)},2000);if(epoch===sceneEpoch)status(e.message+'，正在等待地图重试');return false}
+ finally{regionPending.delete(requestKey)}})();regionPending.set(requestKey,pending);return pending;
+}
+
+const libMeta=new Map();
+function metaFor(lib){
+ if(!libMeta.has(lib)){let timer;const pending=Promise.race([fetchAsset('/assets/'+lib+'/meta.json?v=all8').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('metadata timeout')),8000)})]).finally(()=>clearTimeout(timer)).catch(e=>{if(libMeta.get(lib)===pending)libMeta.delete(lib);throw e});libMeta.set(lib,pending)}return libMeta.get(lib);
+}
+function sprite(lib,index){
+ if(!lib||!Number.isInteger(index)||index<0)return null;const key=lib+'/'+index,old=spriteCache.get(key);
+ if(old&&(!old.failed||old.attempt>=3||performance.now()<old.retryAt))return old;
+ const f={ready:false,attempt:(old?.attempt||0)+1};spriteCache.set(key,f);
+ const singleMetadata=()=>fetchAsset('/assets/'+key+'.json').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()});
+ const meta=ASSET_MANIFEST?metaFor(lib).then(m=>m[index]||singleMetadata(),singleMetadata):singleMetadata();let timer;
+ const image=new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,'/assets/'+key+'.png',reject)});
+ Promise.race([Promise.all([meta,image]),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('sprite timeout')),12000)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});invalidateBackground();redraw()}).catch(()=>{f.failed=true;f.retryAt=performance.now()+2000*f.attempt}).finally(()=>clearTimeout(timer));return f;
+}
+
 function draw(){
  ctx.fillStyle='#10130d';ctx.fillRect(0,0,canvas.width,canvas.height);if(!me)return;
  const now=performance.now(),camera=positionOf(me,motions.get(me.id),now),cx=Math.floor(camera.x*TW-canvas.width/2),cy=Math.floor(camera.y*TH-gameCenterY());npcHits=[];monsterHits=[];playerHits=[];dropHits=[];updateGate();
@@ -180,17 +212,17 @@ function draw(){
  for(const g of portals){const x=g.x*TW-cx+24,y=g.y*TH-cy+16;if(x<-100||x>canvas.width+100||y<-100||y>canvas.height+100)continue;ctx.strokeStyle='#d6bc6c';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y,22,10,0,0,Math.PI*2);ctx.stroke();label(g.name+' · 走入',x,y-18,'#ffe5a1')}
  const entities=[];for(const n of npcs)entities.push({kind:'npc',p:n,pos:n});
  for(const m of monsters.values())if(m.hp>0)entities.push({kind:'monster',p:m,pos:positionOf(m,monsterMotions.get(m.id),now)});
- for(const p of players.values())entities.push({kind:'player',p,pos:positionOf(p,motions.get(p.id),now)});
+ for(const p of players.values()){entities.push({kind:'player',p,pos:positionOf(p,motions.get(p.id),now)});if(p.companion?.hp>0)entities.push({kind:'companion',p:p.companion,pos:positionOf(p.companion,companionMotions.get(p.id),now)})}
  entities.sort((a,b)=>a.pos.y-b.pos.y);let ei=0;
  function drawEntity(e){const p=e.p,x=e.pos.x*TW-cx,py=e.pos.y*TH-cy;if(x < -200||x>canvas.width+200||py < -200||py>canvas.height+200)return;
   if(e.kind==='npc'){const f=actor(p.library||'npc',p.frame+(p.guard?Math.floor(now/250)%4:0),x,py);label(p.name,x+24,py-65,'#d4f1a6');if(f?.ready)npcHits.push({n:p,x:x+f.offsetX-8,y:py+f.offsetY-18,w:f.width+16,h:f.height+24});return}
-  if(e.kind==='monster'){
-   const af=frameFor(monsterAnimations,monsterMotions.get(p.id),p.dir,p.id),index=(p.base||0)+af.index;
+  if(e.kind==='monster'||e.kind==='companion'){
+   const af=frameFor(monsterAnimations,e.kind==='companion'?companionMotions.get(p.owner_id):monsterMotions.get(p.id),p.dir,p.id),index=(p.base||0)+af.index;
    const f=actor(p.library||'Mon1',index,x,py,(p.base||0)+p.dir*monsterAnimations.idle.stride);
    const top=f?.ready?py+f.offsetY-20:py-35;
    if(p.id===attackTarget){ctx.strokeStyle='#edb260';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x+24,py+20,24,12,0,0,Math.PI*2);ctx.stroke()}
-   label(p.name+' Lv.'+(p.level||1),x+24,top,'#ffdf9f');ctx.fillStyle='#21100e';ctx.fillRect(x+3,top+5,42,4);ctx.fillStyle='#bd4940';ctx.fillRect(x+3,top+5,42*p.hp/p.max_hp,4);ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.strokeRect(x+2.5,top+4.5,43,5);ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillStyle='#e6cf9a';ctx.fillText('防'+(p.defense??0),x+49,top+10);
-   if(f?.ready)monsterHits.push({m:p,x:x+f.offsetX-8,y:py+f.offsetY-18,w:f.width+16,h:f.height+24});return;
+   label(p.name+' Lv.'+(p.level||1),x+24,top,p.friendly?'#9aefb3':'#ffdf9f');ctx.fillStyle='#21100e';ctx.fillRect(x+3,top+5,42,4);ctx.fillStyle=p.friendly?'#55bb80':'#bd4940';ctx.fillRect(x+3,top+5,42*p.hp/p.max_hp,4);ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.strokeRect(x+2.5,top+4.5,43,5);ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillStyle='#e6cf9a';ctx.fillText('防'+(p.defense??0),x+49,top+10);
+   if(f?.ready&&!p.friendly)monsterHits.push({m:p,x:x+f.offsetX-8,y:py+f.offsetY-18,w:f.width+16,h:f.height+24});return;
   }
   const g=p.gender==='female'?600:0,base=(p.armor_base??(p.armor?1200:0))+g,af=frameFor(playerAnimations,motions.get(p.id),p.dir,p.id),body=base+af.index,weapon=(p.weapon_base||1200)+g+af.index;
   for(let i=0;i<af.a.count;i++){sprite('Hum',base+af.a.offset+p.dir*af.a.stride+i);if(p.weapon)sprite('Weapon',(p.weapon_base||1200)+g+af.a.offset+p.dir*af.a.stride+i)}
@@ -215,7 +247,7 @@ function resize(){classicScale=Math.min(1,innerWidth/800);document.documentEleme
 window.addEventListener('resize',resize);resize();loadRoles();
 const keyDir={ArrowUp:0,w:0,ArrowRight:2,d:2,ArrowDown:4,s:4,ArrowLeft:6,a:6,q:7,e:1,z:5,c:3};
 // Animation timing is driven by accepted server actions; rendering interpolates between tiles.
-const motions=new Map(),monsters=new Map(),monsterMotions=new Map(),damageLabels=[];
+const motions=new Map(),monsters=new Map(),monsterMotions=new Map(),companionMotions=new Map(),damageLabels=[];
 const groundDrops=new Map();let dropHits=[],pickupTarget=null;
 let playerHits=[],guardArrows=[];const skillEffects=[];let pkMode=false,questRoute=null,questRequest=0,rankingData=null,rankingTab='level';
 let monsterHits=[],attackTarget=null,destination=null,runMode=false,heldDirection=null,shiftHeld=false,nextInputAt=0,skillHotbarSig="";
@@ -229,6 +261,7 @@ function positionOf(p,motion,now=performance.now()){
 }
 function applyPlayer(p,animate=true){
  const old=players.get(p.id),prior=motions.get(p.id),now=performance.now();
+ if(!p.companion)companionMotions.delete(p.id);else if(old?.companion&&p.companion.action_seq!==old.companion.action_seq){const from=positionOf(old.companion,companionMotions.get(p.id),now);companionMotions.set(p.id,{x:from.x,y:from.y,start:now,duration:p.companion.duration_ms||450,action:p.companion.action||'idle'})}
  if(animate&&old&&p.action_seq!==old.action_seq){
   const from=positionOf(old,prior,now),action=p.action||'idle';
   const motion={x:from.x,y:from.y,start:now,duration:p.duration_ms||360,action,seq:p.action_seq};motions.set(p.id,motion);
@@ -268,14 +301,14 @@ function receiveCombat(c){if(c.skill_id||c.skill_name){const p=players.get(c.att
   if(c.leveled){playSfx('level');$('level-toast').textContent=`等级提升 · Lv.${me.level}`;$('level-toast').classList.add('show');setTimeout(()=>$('level-toast').classList.remove('show'),2600);log('成长',`升到 ${me.level} 级！生命和攻击提升。`)}
  }
 }
-function resetControls(){if(typeof clearTouchCooldown==='function')clearTouchCooldown();resetJoystick();skillHotbarSig="";onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();damageLabels.length=0;updateTarget()}
+function resetControls(){if(typeof clearTouchCooldown==='function')clearTouchCooldown();resetJoystick();skillHotbarSig="";onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();companionMotions.clear();damageLabels.length=0;updateTarget()}
 function toggleRun(){runMode=!runMode;$('run-btn').textContent=runMode?'奔跑':'行走';$('run-btn').setAttribute('aria-pressed',String(runMode))}
 $('run-btn').textContent='行走';$('run-btn').onclick=toggleRun;
 function chooseAttack(id){if(!me)return;const m=monsters.get(id);if(!m||m.hp<=0)return;pickupTarget=null;attackTarget=id;destination=null;heldKeys.clear();heldDirection=null;nextInputAt=0;updateTarget();status(`目标：${m.name}，靠近后自动攻击；Esc 取消`)}
 function attackNearest(){if(!me)return;const candidates=[...monsters.values()].filter(m=>m.hp>0).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y));if(candidates.length)chooseAttack(candidates[0].id);else status('附近没有怪物，稍后会重新刷新')}
 $('attack-btn').onclick=attackNearest;
 const deltas=[[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];
-function canStep(x,y,dir){const [dx,dy]=deltas[dir],cell=mapCache.get(`${x+dx},${y+dy}`);return !!cell&&!cell.blocked&&(!dx||!dy||(!mapCache.get(`${x+dx},${y}`)?.blocked&&!mapCache.get(`${x},${y+dy}`)?.blocked))}
+function canStep(x,y,dir){const [dx,dy]=deltas[dir],walkable=(a,b)=>{const c=mapCache.get(a+','+b);return !!c&&!c.blocked};return walkable(x+dx,y+dy)&&(!dx||!dy||(walkable(x+dx,y)&&walkable(x,y+dy)))}
 function canMelee(from,to){const dx=to.x-from.x,dy=to.y-from.y;if(Math.max(Math.abs(dx),Math.abs(dy))>1)return false;if(!dx&&!dy)return true;const dir=deltas.findIndex(d=>d[0]===dx&&d[1]===dy);return dir>=0&&canStep(from.x,from.y,dir)}
 function pathDirection(target,adjacent=false){
  const start={x:me.x,y:me.y,first:null},queue=[start],seen=new Set([`${me.x},${me.y}`]);
@@ -339,17 +372,15 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('keyup',e=>{heldKeys.delete(e.code);if(e.key==='Shift')shiftHeld=false});
 window.addEventListener('blur',()=>{cancelQuestRoute();heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;updateTarget()});
 document.querySelectorAll('[data-dir]').forEach(b=>{b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);heldDirection=Number(b.dataset.dir);destination=null;attackTarget=null;inputTick()};b.onpointerup=b.onpointercancel=()=>heldDirection=null});
-function talkToNPC(n){
- if(!n||!me)return;
- stopActions();
- const dist=Math.max(Math.abs(me.x-n.x),Math.abs(me.y-n.y));
- if(dist<=6){send('talk',{npc_id:n.id});return}
- const path=questPath(n);
- if(!path||!path.length){status('无法到达'+n.name+'附近');return}
- questRoute={path,target:n,kind:'npc',map:me.map_id};
- $('cancel-route').hidden=false;
- status('正在前往'+n.name+'，方向键或停止按钮可取消');
+async function talkToNPC(n){
+ if(!n||!me)return;stopActions();
+ if(Math.max(Math.abs(me.x-n.x),Math.abs(me.y-n.y))<=6){send('talk',{npc_id:n.id});return}
+ const token=++questRequest,ownerID=me.id,mapID=me.map_id,control=new AbortController();questController=control;
+ if($('map-dialog').open)$('map-dialog').close();$('cancel-route').hidden=false;status('正在加载通往'+n.name+'的路线…');
+ try{await loadRouteCells(n,mapID,control,()=>token===questRequest&&me?.id===ownerID&&me.map_id===mapID);if(token!==questRequest||me?.id!==ownerID||me.map_id!==mapID)return;const path=questPath(n);if(!path)throw Error('无法到达'+n.name+'附近');if(!path.length){cancelQuestRoute();send('talk',{npc_id:n.id});return}questRoute={path,target:n,kind:'npc',map:mapID,failures:0};status('正在前往'+n.name+'，方向键或停止按钮可取消')}
+ catch(e){if(token===questRequest){cancelQuestRoute();status(e.message)}}
 }
+
 function canvasTarget(e,running=false){
  if(!me||me.dead||chatOpen)return;cancelQuestRoute();
  if((e.ctrlKey||pkMode)&&!running){const h=playerHits.find(h=>e.clientX>=h.x&&e.clientX<=h.x+h.w&&e.clientY>=h.y&&e.clientY<=h.y+h.h);if(h){stopActions();send('attack_player',{target_id:h.p.id});return}}
@@ -374,7 +405,7 @@ function playSfx(kind){if(!sfxEnabled||soundContext?.state!=='running'||!soundBu
 $('sfx-btn').onclick=()=>{sfxEnabled=!sfxEnabled;localStorage.setItem('legend_sfx',sfxEnabled?'on':'off');soundLabel();unlockSound()};
 $('sfx-volume').value=localStorage.getItem('legend_sfx_volume')||70;$('sfx-volume').oninput=()=>localStorage.setItem('legend_sfx_volume',$('sfx-volume').value);
 
-function stopActions(){if(typeof cancelTouchAim==='function')cancelTouchAim();questRoute=null;resetJoystick();$('cancel-route').hidden=true;pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;updateTarget()}
+function stopActions(keepQuestRequest=false){if(!keepQuestRequest)cancelQuestRoute();if(typeof cancelTouchAim==='function')cancelTouchAim();questRoute=null;resetJoystick();$('cancel-route').hidden=true;pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;updateTarget()}
 function updateVitals(){
  if(!me)return;const hp=Math.max(0,Math.min(1,me.hp/me.max_hp)),mp=Math.max(0,Math.min(1,me.mp/me.max_mp));
  $('classic-hp').style.clipPath=`inset(${(1-hp)*100}% 50% 0 0)`;$('classic-mp').style.clipPath=`inset(${(1-mp)*100}% 0 0 50%)`;
@@ -390,7 +421,7 @@ function receiveMonsterHit(c){
  if(c.target_id===me?.id){playSfx('hit');document.body.classList.add('hurt');setTimeout(()=>document.body.classList.remove('hurt'),200);log('受伤',`${c.attacker_name}造成 ${c.damage} 点伤害${c.killed?'，你已倒下。':'。'}`)}
 }
 function changeScene(scene){
- sceneEpoch++;invalidateBackground();portals=[];activeNPC=null;for(const d of document.querySelectorAll('dialog[open]'))d.close();stopMonsterSounds();currentScene=scene;me=null;mapCache.clear();regionCache.clear();players.clear();resetControls();npcs=[];
+ sceneEpoch++;invalidateBackground();portals=[];activeNPC=null;for(const d of document.querySelectorAll('dialog[open]'))d.close();stopMonsterSounds();currentScene=scene;me=null;mapCache.clear();regionCache.clear();regionRetryAt.clear();players.clear();resetControls();npcs=[];
  for(const d of document.querySelectorAll('dialog[open]'))d.close();
  $('scene').querySelector('h2').textContent=scene.name;$('scene').querySelector('p').textContent=scene.province;
  document.querySelector('.scene-note').innerHTML='初入'+scene.name+'<br>① 出生点附近为安全区<br>② 走出村落，留意主动怪物<br>③ 点击掉落装备或按 F 拾取<br>④ 底部传送可切换地图';
@@ -739,19 +770,19 @@ $('pk-btn').onclick=()=>{if(me?.level<5){status('达到5级后开放自由PK');r
 function receiveRankings(data){rankingData=data;renderRankings()}
 function renderRankings(){const box=$('rank-rows');box.replaceChildren();$('rank-formula').textContent=rankingData?.formula||'正在读取排行榜…';for(const [i,r]of (rankingData?.[rankingTab]||[]).entries()){const tr=document.createElement('tr');for(const v of [i+1,r.name,classes[r.class]||r.class,r.level,r.power]){const td=document.createElement('td');td.textContent=v;tr.appendChild(td)}box.appendChild(tr)}if(rankingData&&!box.children.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.textContent='暂无角色';tr.appendChild(td);box.appendChild(tr)}}
 $('ranking-btn').onclick=()=>{stopActions();renderRankings();$('ranking-dialog').showModal();send('rankings')};$('close-ranking').onclick=()=>$('ranking-dialog').close();$('rank-level').onclick=()=>{rankingTab='level';renderRankings()};$('rank-power').onclick=()=>{rankingTab='power';renderRankings()};$('rank-refresh').onclick=()=>send('rankings');
-function cancelQuestRoute(){questRequest++;questRoute=null;$('cancel-route').hidden=true}
+function cancelQuestRoute(){questRequest++;questController?.abort();questController=null;questRoute=null;$('cancel-route').hidden=true}
 $('cancel-route').onclick=()=>{cancelQuestRoute();stopActions();status('已停止寻路')};
 async function startQuestRoute(){
- stopActions();const token=++questRequest,q=me?.journey;if(!q||q.completed)return;
+ stopActions();const token=++questRequest,q=me?.journey,ownerID=me?.id;if(!q||q.completed)return;const control=new AbortController();questController=control;
  const targetMap=q.ready?(q.npc_map_id??0):(q.hunt_map_id??0);
- $('growth-dialog').close();$('cancel-route').hidden=false;
+ $('growth-dialog').close();$('cancel-route').hidden=false;status('正在加载寻路地图…');
  try{
   if(me.map_id!==targetMap){
-   send('travel',{map_id:targetMap});let arrived=false;
+   if(!send('travel',{map_id:targetMap}))throw Error('连接已断开，请重新进入游戏');let arrived=false;
    for(let i=0;i<100;i++){await new Promise(r=>setTimeout(r,100));if(token!==questRequest)return;if(me?.map_id===targetMap){arrived=true;break}}
    if(!arrived)throw Error('跨图传送未完成，请稍后重试');
   }
-  await loadRegion();if(token!==questRequest)return;
+  if(!await loadRegion(true))throw Error('地图暂时不可用，请稍后重新寻路');if(token!==questRequest||me?.id!==ownerID)return;
   let target=null,kind='npc';
   if(q.ready){target=npcs.find(n=>n.id===q.npc_id);kind='npc'}
   else if((q.target??0)>0){
@@ -759,45 +790,50 @@ async function startQuestRoute(){
    target=[...monsters.values()].filter(m=>m.hp>0&&(!names.length||names.includes(m.name))).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];
   }else{target=npcs.find(n=>n.id===q.npc_id);kind='npc'}
   if(!target)throw Error(kind==='monster'?('当前地图尚未刷新'+((q.hunt_names||[]).join('/')||'任务怪物')+'，请稍后重试'):'尚未找到任务NPC');
-  const sx=Math.max(0,Math.min(me.x,target.x)-20),sy=Math.max(0,Math.min(me.y,target.y)-20),w=Math.abs(me.x-target.x)+41,h=Math.abs(me.y-target.y)+41;
-  if(w*h>1000000)throw Error('目标区域过大，请先靠近目标地图');
-  const chunks=[];for(let x=sx;x<sx+w;x+=160)for(let y=sy;y<sy+h;y+=160)chunks.push({x,y,w:Math.min(160,sx+w-x),h:Math.min(160,sy+h-y)});
-  for(let i=0;i<chunks.length;i+=4){if(token!==questRequest||!me||me.map_id!==targetMap)return;const batch=await Promise.all(chunks.slice(i,i+4).map(async c=>{const r=await fetch(`/api/map?map_id=${targetMap}&x=${c.x}&y=${c.y}&w=${c.w}&h=${c.h}`);if(!r.ok)throw Error('寻路地图读取失败');return r.json()}));if(token!==questRequest||!me||me.map_id!==targetMap)return;for(const d of batch)for(const c of d.cells)mapCache.set(c.x+','+c.y,c)}
-  const path=questPath(target);if(!path)throw Error('目标附近没有可通行路线');if(!path.length){if(kind==='npc')send('talk',{npc_id:target.id});else status('已到达任务怪物附近');return}questRoute={path,target,kind,map:targetMap};$('cancel-route').hidden=false;status('正在前往'+target.name+'，方向键或停止按钮可取消');
+  await loadRouteCells(target,targetMap,control,()=>token===questRequest&&me?.id===ownerID&&me.map_id===targetMap);if(token!==questRequest||me?.id!==ownerID||me.map_id!==targetMap)return;
+  const path=questPath(target);if(!path)throw Error('目标附近没有可通行路线');if(!path.length){cancelQuestRoute();if(kind==='npc')send('talk',{npc_id:target.id});else status('已到达任务怪物附近');return}questRoute={path,target,kind,map:targetMap,failures:0};$('cancel-route').hidden=false;status('正在前往'+target.name+'，方向键或停止按钮可取消');
  }catch(e){if(token===questRequest){cancelQuestRoute();status(e.message)}}
 }
 
-function questPath(target){const start=me.x+','+me.y,open=[{x:me.x,y:me.y,g:0}],best=new Map([[start,0]]),parent=new Map(),closed=new Set();let end=null;
- for(let n=0;open.length&&n<200000;n++){open.sort((a,b)=>(b.g+Math.max(Math.abs(b.x-target.x),Math.abs(b.y-target.y)))-(a.g+Math.max(Math.abs(a.x-target.x),Math.abs(a.y-target.y))));const p=open.pop(),key=p.x+','+p.y;if(closed.has(key))continue;closed.add(key);if(Math.max(Math.abs(p.x-target.x),Math.abs(p.y-target.y))<=1){end=key;break}for(let dir=0;dir<8;dir++){if(!canStep(p.x,p.y,dir))continue;const [dx,dy]=deltas[dir],x=p.x+dx,y=p.y+dy,k=x+','+y;if(portals.some(g=>g.x===x&&g.y===y)||npcs.some(g=>g.x===x&&g.y===y))continue;const g=p.g+1;if(g>=(best.get(k)??Infinity))continue;best.set(k,g);parent.set(k,key);open.push({x,y,g})}}
+async function loadRouteCells(target,targetMap,control,valid){
+ if(!valid())throw new DOMException('寻路已取消','AbortError');
+ if(!await loadRegion(true))throw Error('地图暂时不可用，请稍后重新寻路');if(!valid())throw new DOMException('寻路已取消','AbortError');
+ const sx=Math.max(0,Math.min(me.x,target.x)-20),sy=Math.max(0,Math.min(me.y,target.y)-20),w=Math.abs(me.x-target.x)+41,h=Math.abs(me.y-target.y)+41;
+ if(w*h>1000000)throw Error('目标区域过大，请先靠近目标地图');
+ const chunks=[];for(let x=sx;x<sx+w;x+=160)for(let y=sy;y<sy+h;y+=160)chunks.push({x,y,w:Math.min(160,sx+w-x),h:Math.min(160,sy+h-y)});
+ for(let i=0;i<chunks.length;i+=4){if(!valid())throw new DOMException('寻路已取消','AbortError');const batch=await Promise.all(chunks.slice(i,i+4).map(c=>loadMapChunk({map_id:targetMap,...c},control.signal)));if(!valid())throw new DOMException('寻路已取消','AbortError');for(const d of batch)for(const c of d.cells)mapCache.set(c.x+','+c.y,c)}
+}
+function routeReached(pos,target){const d=Math.max(Math.abs(pos.x-target.x),Math.abs(pos.y-target.y));return typeof target.id==='string'?d<=6:d<=1&&canMelee(pos,target)}
+function questPath(target){
+ if(!me)return null;
+ const start=me.x+','+me.y,heap=[],best=new Map([[start,0]]),parent=new Map(),closed=new Set();let end=null;
+ const score=p=>p.g+Math.max(Math.abs(p.x-target.x),Math.abs(p.y-target.y));
+ const push=p=>{heap.push(p);let i=heap.length-1;while(i>0){const j=(i-1)>>1;if(score(heap[j])<=score(p))break;heap[i]=heap[j];i=j}heap[i]=p};
+ const pop=()=>{const root=heap[0],last=heap.pop();if(heap.length){let i=0;while(i*2+1<heap.length){let j=i*2+1;if(j+1<heap.length&&score(heap[j+1])<score(heap[j]))j++;if(score(last)<=score(heap[j]))break;heap[i]=heap[j];i=j}heap[i]=last}return root};
+ push({x:me.x,y:me.y,g:0});
+ for(let n=0;heap.length&&n<60000;n++){
+  const p=pop(),key=p.x+','+p.y;if(closed.has(key))continue;closed.add(key);if(routeReached(p,target)){end=key;break}
+  for(let dir=0;dir<8;dir++){if(!canStep(p.x,p.y,dir))continue;const [dx,dy]=deltas[dir],x=p.x+dx,y=p.y+dy,k=x+','+y;if(portals.some(g=>g.x===x&&g.y===y)||npcs.some(g=>g.x===x&&g.y===y))continue;const g=p.g+1;if(g>=(best.get(k)??Infinity))continue;best.set(k,g);parent.set(k,key);push({x,y,g})}
+ }
  if(end===null)return null;const path=[];for(let k=end;k!==start;k=parent.get(k)){if(!k)return null;path.push(k.split(',').map(Number))}return path.reverse();
 }
-function tickQuestRoute(){const q=questRoute;if(me.map_id!==q.map||me.dead){cancelQuestRoute();return}
- const tickNow=performance.now();
- if(q.lastX===undefined||q.lastX!==me.x||q.lastY!==me.y){q.lastX=me.x;q.lastY=me.y;q.lastAt=tickNow}
- else if(tickNow-(q.lastAt||tickNow)>2200){
-  // A rejected step must not leave the route retrying forever.
-  const retry=questPath(q.target);
-  if(!retry||!retry.length){cancelQuestRoute();status('无法到达'+q.target.name+'附近');return}
-  q.path=retry;q.lastAt=tickNow;return;
+function tickQuestRoute(){
+ const q=questRoute;if(!me||me.map_id!==q.map||me.dead){cancelQuestRoute();return}
+ if(routeReached(me,q.target)){cancelQuestRoute();if(q.kind==='npc')send('talk',{npc_id:q.target.id});else status('已到达任务怪物附近，点击怪物或使用技能攻击');return}
+ const now=performance.now();
+ if(q.pending){
+  if(me.x===q.pending.x&&me.y===q.pending.y){if(now-q.pending.at<2500)return;q.failures=(q.failures||0)+1;if(q.failures>=3){cancelQuestRoute();status('移动确认超时，已停止寻路，请检查连接后重试');return}q.path=questPath(q.target)}else q.failures=0;
+  q.pending=null;
  }
- // The server can acknowledge movement after the next tick. Re-sync the
- // route from the player's current tile instead of walking back to a
- // stale node.
- const here=q.path.findIndex(([x,y])=>x===me.x&&y===me.y);
- if(here>=0)q.path.splice(0,here+1);
- if(!q.path.length){cancelQuestRoute();if(q.kind==='npc')send('talk',{npc_id:q.target.id});else status('已到达任务怪物附近，点击怪物或使用技能攻击');return}
- const [x,y]=q.path[0],dir=deltas.findIndex(([dx,dy])=>me.x+dx===x&&me.y+dy===y);
- if(here<0){
-  // Accept the first node if it is a step toward the NPC. If it is a stale
-  // node behind us (run step or server correction), rebuild from here.
-  const currentDistance=Math.max(Math.abs(me.x-q.target.x),Math.abs(me.y-q.target.y));
-  const nextDistance=Math.max(Math.abs(x-q.target.x),Math.abs(y-q.target.y));
-  if(dir<0||nextDistance>currentDistance){
-   const p=questPath(q.target);if(!p||!p.length){cancelQuestRoute();status('路线发生变化，请重新寻路');return}q.path=p;return;
-  }
- }
- if(dir<0||!canStep(me.x,me.y,dir)){cancelQuestRoute();status('路线发生变化，请重新寻路');return}
- const [dx,dy]=deltas[dir],second=q.path[1];
- const canRun=q.path.length>1&&second&&second[0]===x+dx&&second[1]===y+dy&&canStep(x,y,dir)&&canStep(x+dx,y+dy,dir);
- requestMove(dir,canRun)}
+ const here=q.path?.findIndex(([x,y])=>x===me.x&&y===me.y)??-1;if(here>=0)q.path.splice(0,here+1);
+ if(!q.path?.length)q.path=questPath(q.target);
+ if(!q.path?.length){cancelQuestRoute();status('无法到达目标附近，地图可能尚未加载完整');return}
+ let [x,y]=q.path[0],dir=deltas.findIndex(([dx,dy])=>me.x+dx===x&&me.y+dy===y);
+ if(dir<0){q.path=questPath(q.target);if(!q.path?.length){cancelQuestRoute();return}[x,y]=q.path[0];dir=deltas.findIndex(([dx,dy])=>me.x+dx===x&&me.y+dy===y)}
+ if(dir<0||!canStep(me.x,me.y,dir)){cancelQuestRoute();status('前方地图数据不可用，已停止寻路，请稍后重试');loadRegion(true);return}
+ const [dx,dy]=deltas[dir],second=q.path[1],canRun=!!second&&second[0]===x+dx&&second[1]===y+dy&&canStep(x,y,dir);
+ if(send('move',{dir,run:canRun})){q.pending={x:me.x,y:me.y,at:now};nextInputAt=now+(canRun?(me.run_ms||260):(me.walk_ms||360))+20}
+ else{cancelQuestRoute();status('连接已断开，已停止寻路')}
+}
+
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key))cancelQuestRoute()});
