@@ -150,7 +150,8 @@ async function loadRegion(){if(!me)return;const epoch=sceneEpoch,mapID=me.map_id
 const libMeta=new Map();
 function metaFor(lib){if(!libMeta.has(lib))libMeta.set(lib,fetchAsset(`/assets/${lib}/meta.json?v=all8`).then(r=>{if(!r.ok)throw Error();return r.json()}));return libMeta.get(lib)}
 function sprite(lib,index){if(index<0)return null;const key=`${lib}/${index}`;if(spriteCache.has(key))return spriteCache.get(key);const f={ready:false};spriteCache.set(key,f);
- const meta=ASSET_MANIFEST?metaFor(lib).then(m=>{const v=m[index];if(!v)throw Error('metadata missing');return v}):fetchAsset(`/assets/${key}.json`).then(r=>{if(!r.ok)throw Error();return r.json()});
+ const singleMetadata=()=>fetchAsset(`/assets/${key}.json`).then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()});
+ const meta=ASSET_MANIFEST?metaFor(lib).then(m=>m[index]||singleMetadata(),singleMetadata):singleMetadata();
  Promise.all([meta,new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,`/assets/${key}.png`,reject)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});invalidateBackground();redraw()}).catch(()=>{f.failed=true});return f;
 }
 function draw(){
@@ -194,7 +195,7 @@ function draw(){
   const g=p.gender==='female'?600:0,base=(p.armor_base??(p.armor?1200:0))+g,af=frameFor(playerAnimations,motions.get(p.id),p.dir,p.id),body=base+af.index,weapon=(p.weapon_base||1200)+g+af.index;
   for(let i=0;i<af.a.count;i++){sprite('Hum',base+af.a.offset+p.dir*af.a.stride+i);if(p.weapon)sprite('Weapon',(p.weapon_base||1200)+g+af.a.offset+p.dir*af.a.stride+i)}
   if(p.weapon&&[0,1,7].includes(p.dir))actor('Weapon',weapon,x,py);
-  if(p.helmet_icon)actor('stateitem',p.helmet_icon,x,py);
+  // stateitem contains paperdoll parts; it is not a world-character helmet library.
   const bodyFrame=actor('Hum',body,x,py,base+p.dir*8);if(p.id!==me.id&&bodyFrame?.ready)playerHits.push({p,x:x+bodyFrame.offsetX-6,y:py+bodyFrame.offsetY-10,w:bodyFrame.width+12,h:bodyFrame.height+20});
   if(p.weapon&&![0,1,7].includes(p.dir))actor('Weapon',weapon,x,py);
   label(p.name,x+24,py-55,p.red_name?'#ff4141':'#fff1be');const bubble=chatBubbles.get(p.id);if(bubble&&bubble.until>now)label(bubble.text,x+24,py-80,'#fff5cd');
@@ -257,7 +258,7 @@ function updateTarget(){
  $('target-panel').classList.toggle('selected',!!m);
  $('monster-count').textContent=`附近生物 ${[...monsters.values()].filter(m=>m.hp>0&&me&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=16).length}`
 }
-function receiveCombat(c){if(c.skill_id==='fireball'||c.skill_id==='big_fireball'){const p=players.get(c.attacker_id)||me;if(p)addSkillEffect(c.skill_id,p.x,p.y,c.target_x,c.target_y)}else if(c.skill_name){const p=players.get(c.attacker_id);if(p)addSkillEffect('slash',p.x,p.y,c.target_x,c.target_y)}if(c.skill_name&&c.attacker_id===me?.id)log('技能',c.skill_name);
+function receiveCombat(c){if(c.skill_id||c.skill_name){const p=players.get(c.attacker_id)||(c.attacker_id===me?.id?me:null);const effect=SKILL_FX[c.skill_id]?c.skill_id:(c.skill_name?'slash':null);if(p&&effect)addSkillEffect(effect,p.x,p.y,c.target_x,c.target_y)}if(c.skill_name&&c.attacker_id===me?.id)log('技能',c.skill_name);
  const m=monsters.get(c.target_id);if(m||c.target_x!==undefined)damageLabels.push({x:m?.x??c.target_x,y:m?.y??c.target_y,text:`−${c.damage}`,start:performance.now(),color:'#ffb76f'});
  if(c.player)applyPlayer(c.player);
  const attacker=players.get(c.attacker_id);if(attacker&&me&&Math.max(Math.abs(attacker.x-me.x),Math.abs(attacker.y-me.y))<16){playSfx('swing');playMonsterSound(c.killed?c.sound_death:c.sound_hit,{x:c.target_x,y:c.target_y})}
@@ -537,7 +538,7 @@ function renderGrowth(){if(!me)return;const dialog=$('growth-dialog'),box=$('gro
  if(growthTab==='skills'){const all=me.skills||[],sk=all.find(v=>v.id===selectedSkillId)||all[0];if(!sk)return;selectedSkillId=sk.id;const panel=document.createElement('div');panel.className='skill-book-panel';const close=growthButton('关闭',()=>dialog.close());close.className='panel-close';close.setAttribute('aria-label','关闭技能书');panel.appendChild(close);const scroll=document.createElement('img');scroll.className='skill-scroll';setImage(scroll,'/assets/Items/261.png');scroll.alt='客户端卷轴素材';panel.appendChild(scroll);const tabs=document.createElement('div');tabs.className='skill-tabs';for(const row of all){const b=growthButton(row.name+' · '+(row.rank?'技能 '+row.rank+' 级':'未学习'),()=>{selectedSkillId=row.id;renderGrowth()});b.classList.toggle('selected',row.id===sk.id);tabs.appendChild(b)}panel.appendChild(tabs);const detail=document.createElement('div');detail.className='skill-detail';const title=document.createElement('strong');title.textContent=sk.name+' · '+(sk.rank?'熟练度 '+sk.practice+'/60':'技能书 '+sk.books+' 本');detail.appendChild(title);const info=document.createElement('p');info.textContent='要求 Lv.'+sk.required_level+' · '+(sk.passive?'被动生效':'消耗 '+sk.mp+' MP · '+(sk.range?'距离 '+sk.range:'自身治疗'));detail.appendChild(info);const actions=document.createElement('div');actions.className='actions';actions.appendChild(growthButton('购买技能书 · '+sk.price+' 金币',()=>send('buy_book',{skill_id:sk.id}),!!sk.rank||sk.books>0));actions.appendChild(growthButton('学习',()=>send('learn',{skill_id:sk.id}),!!sk.rank||!sk.books||me.level<sk.required_level));if(sk.rank){actions.appendChild(growthButton(me.training===sk.id?'停止练功':'自动练功',()=>send('train',{skill_id:me.training===sk.id?'':sk.id}),sk.rank>=3));if(!sk.passive)actions.appendChild(growthButton('施放',()=>{dialog.close();castSkill(sk.id)}))}detail.appendChild(actions);panel.appendChild(detail);box.appendChild(panel);const help=document.createElement('p');help.className='skill-book-help';help.textContent='靠近向导、武馆教头或书店可购买与练功。F1–F8 或数字 1–8 施放快捷栏中的主动技能；移动、战斗或离线会停止练功。';box.appendChild(help);return}
  renderCharacter(box);
 }
-function castSkill(id){if(!me||me.dead)return;const sk=me.skills?.find(s=>s.id===id);if(!sk?.rank||sk.passive){status('该技能未学习或为被动技能');return}let target=null;if(sk.kind==='damage'){target=monsters.get(attackTarget)||[...monsters.values()].filter(m=>m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=sk.range).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];if(!target){status('施法范围内没有目标');return}}stopActions();send('cast',{skill_id:id,target_id:target?.id||0})}
+function castSkill(id){if(!me||me.dead)return;const sk=me.skills?.find(s=>s.id===id);if(!sk?.rank||sk.passive){status('该技能未学习或为被动技能');return}let target=null;if(sk.kind==='damage'){const inRange=m=>m&&m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=sk.range;const selected=monsters.get(attackTarget);target=(inRange(selected)?selected:null)||[...monsters.values()].filter(inRange).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];if(!target){status('施法范围内没有目标');return}}stopActions();send('cast',{skill_id:id,target_id:target?.id||0})}
 
 let characterTab='equipment',selectedEquipmentSlot='';
 const equipmentLayout=[['weapon','武器',75,120,'weapon'],['armor','衣服',127,153,'armor'],['helmet','头盔',232,82,'helmet'],['necklace','项链',232,130,'necklace'],['bracelet_left','左手镯',58,226,'bracelet'],['bracelet_right','右手镯',232,226,'bracelet'],['ring_left','左戒指',58,270,'ring'],['ring_right','右戒指',232,270,'ring'],['stone','宝石',58,324,'stone'],['belt','腰带',101,324,'belt'],['boots','靴子',144,324,'boots'],['seal','印记',187,324,'seal']];
@@ -649,42 +650,47 @@ $('inventory-dialog').addEventListener('close',()=>{bagRepairNPC=null;bagSellNPC
 
 function activeSkills(){return (me?.skills||[]).filter(s=>!s.passive&&s.rank>0).slice(0,8)}
 function magicDir(dx,dy){let a=Math.atan2(dy,dx)+Math.PI/2;if(a<0)a+=Math.PI*2;return Math.round(a/(Math.PI/8))%16}
+// Resource families checked against the supplied client's Magic.wzl; see docs/skill-animation-audit.md.
 const fireImpact=[900,901,902,903,904,905,920,921,922,923,924,925,926,927,928,929,930,931,932,933,934,935],bigImpact=[400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,420,421,422,423,424,425,430,431,432,433,434,435];
 const SEQ=(a,b)=>{const r=[];for(let i=a;i<=b;i++)r.push(i);return r};
 const SKILL_FX={
- fireball:{type:'projectile',base:0,impact:fireImpact,travel:360,scale:1},
- big_fireball:{type:'projectile',base:0,impact:bigImpact,travel:420,scale:1.6},
+ fireball:{type:'projectile',base:0,flightFrames:6,impact:SEQ(170,179),scale:1},
+ big_fireball:{type:'projectile',base:400,flightFrames:6,impact:SEQ(570,579),scale:1},
  heal:{type:'self',frames:SEQ(250,269),scale:1.05},
  mass_heal:{type:'self',frames:SEQ(250,269),scale:1.15},
- thunder:{type:'target',frames:[950,951,952,953,954,955,970,971,972,973,974,975],scale:1.2},
+ thunder:{type:'target',frames:SEQ(950,955),scale:1},
  hell_lightning:{type:'target',frames:[950,951,952,953,954,955,970,971,972,973,974,975],scale:1.35},
  poison:{type:'target',frames:SEQ(200,209),scale:1},
  hellfire:{type:'target',frames:SEQ(760,779),scale:1.1},
- soul_fireball:{type:'target',frames:SEQ(370,379),scale:1.1},
- repulsion:{type:'self',frames:SEQ(800,805),scale:1.2},
- explosion:{type:'target',frames:fireImpact,scale:1.35},
+ soul_fireball:{type:'projectile',base:1160,flightFrames:3,impact:SEQ(1360,1369),scale:1},
+ repulsion:{type:'self',frames:SEQ(900,905),scale:1},
+ explosion:{type:'target',frames:SEQ(920,935),scale:1},
  fire_wall:{type:'target',frames:fireImpact,scale:1.2},
  meteor:{type:'target',frames:fireImpact,scale:1.8},
- laser:{type:'target',frames:SEQ(800,805),scale:1.2},
+ laser:{type:'beam',base:970,flightFrames:6,scale:1},
  ice_storm:{type:'target',frames:SEQ(880,889),scale:1.4},
- fire_sword:{type:'target',frames:bigImpact,scale:1.3},
+ fire_sword:{type:'slash',color:'#ffc85a'},
  lion_roar:{type:'self',frames:SEQ(800,805),scale:1.4},
  magic_shield:{type:'self',frames:SEQ(880,889),scale:1.1},
- ghost_shield:{type:'self',frames:SEQ(880,889),scale:1.1},
- holy_armor:{type:'self',frames:SEQ(601,619),scale:1.1},
+ ghost_shield:{type:'self',frames:SEQ(1320,1335),scale:1},
+ holy_armor:{type:'self',frames:SEQ(1340,1355),scale:1},
  invisibility:{type:'self',frames:SEQ(601,619),scale:1},
  summon:{type:'self',frames:SEQ(601,619),scale:1.15},
  teleport:{type:'self',frames:SEQ(601,619),scale:1},
  trap:{type:'target',frames:SEQ(601,619),scale:1},
  slash:{type:'slash'}
 };
-function magicDir(dx,dy){let a=Math.atan2(dy,dx)+Math.PI/2;if(a<0)a+=Math.PI*2;return Math.round(a/(Math.PI/8))%16}
 function addSkillEffect(kind,x,y,tx,ty){
- const spec=SKILL_FX[kind]||SKILL_FX.slash,now=performance.now(),e={kind,spec,x,y,tx,ty,start:now,dir:magicDir(tx-x,ty-y)};
+ const spec=SKILL_FX[kind]||SKILL_FX.slash,now=performance.now();
+ // Directional frames are drawn in screen space, where map cells are 48 x 32.
+ const dx=(tx-x)*TW,dy=(ty-y)*TH,travel=Math.max(180,Math.min(900,Math.hypot(dx,dy)/.7));
+ const impactDuration=(spec.impact?.length||0)*50;
+ const duration=spec.type==='projectile'?travel+impactDuration:(spec.frames?.length||spec.flightFrames||14)*50;
+ const e={kind,spec,x,y,tx,ty,start:now,dir:magicDir(dx,dy),travel,duration};
  skillEffects.push(e);
  if(spec.frames)for(const idx of spec.frames)sprite('Magic',idx);
  if(spec.impact)for(const idx of spec.impact)sprite('Magic',idx);
- if(spec.type==='projectile')for(let i=0;i<6;i++)sprite('Magic',e.dir*10+i);
+ if(spec.type==='projectile'||spec.type==='beam')for(let i=0;i<spec.flightFrames;i++)sprite('Magic',spec.base+e.dir*10+i);
 }
 function drawMagic(index,x,y,scale=1){
  const f=sprite('Magic',index);if(!f?.ready)return;
@@ -694,19 +700,20 @@ function drawMagic(index,x,y,scale=1){
 }
 function drawSkillEffects(now,cx,cy){
  for(let i=skillEffects.length-1;i>=0;i--){
-  const e=skillEffects[i],spec=e.spec,duration=spec.type==='projectile'?820:700,t=(now-e.start)/duration;
+  const e=skillEffects[i],spec=e.spec,elapsed=now-e.start,t=elapsed/e.duration;
   if(t>=1){skillEffects.splice(i,1);continue}
   const sx=e.x*TW-cx+24,sy=e.y*TH-cy,tx=e.tx*TW-cx+24,ty=e.ty*TH-cy;
   if(spec.type==='projectile'){
-   const split=spec.travel/(spec.travel+360);
-   if(t<split){const k=t/split,px=sx+(tx-sx)*k,py=sy+(ty-sy)*k,f=e.dir*10+Math.min(5,Math.floor(k*6));drawMagic(f,px,py,spec.scale||1)}
-   else{const k=(t-split)/(1-split),f=spec.impact[Math.min(spec.impact.length-1,Math.floor(k*spec.impact.length))];drawMagic(f,tx,ty,(spec.scale||1)*1.3)}
+   if(elapsed<e.travel){const k=elapsed/e.travel,px=sx+(tx-sx)*k,py=sy+(ty-sy)*k,f=spec.base+e.dir*10+Math.floor(elapsed/50)%spec.flightFrames;drawMagic(f,px,py,spec.scale||1)}
+   else{const f=spec.impact[Math.min(spec.impact.length-1,Math.floor((elapsed-e.travel)/50))];drawMagic(f,tx,ty,spec.scale||1)}
+  }else if(spec.type==='beam'){
+   drawMagic(spec.base+e.dir*10+Math.min(spec.flightFrames-1,Math.floor(elapsed/50)),sx,sy,spec.scale||1);
   }else if(spec.type==='target'){
    const f=spec.frames[Math.min(spec.frames.length-1,Math.floor(t*spec.frames.length))];drawMagic(f,tx,ty,spec.scale||1);
   }else if(spec.type==='self'){
    const f=spec.frames[Math.min(spec.frames.length-1,Math.floor(t*spec.frames.length))];drawMagic(f,sx,sy,spec.scale||1);
   }else{
-   ctx.save();ctx.globalAlpha=1-t;ctx.strokeStyle='#fff0a8';ctx.lineWidth=5*(1-t)+1;ctx.beginPath();ctx.arc(tx,ty,24+t*15,-2+t*2,1+t*2);ctx.stroke();ctx.restore();
+   ctx.save();ctx.globalAlpha=1-t;ctx.strokeStyle=spec.color||'#fff0a8';ctx.lineWidth=5*(1-t)+1;ctx.beginPath();ctx.arc(tx,ty,24+t*15,-2+t*2,1+t*2);ctx.stroke();ctx.restore();
   }
  }
 }
