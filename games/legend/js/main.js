@@ -425,7 +425,7 @@ function changeScene(scene){
  for(const d of document.querySelectorAll('dialog[open]'))d.close();
  $('scene').querySelector('h2').textContent=scene.name;$('scene').querySelector('p').textContent=scene.province;
  document.querySelector('.scene-note').innerHTML='初入'+scene.name+'<br>① 出生点附近为安全区<br>② 走出村落，留意主动怪物<br>③ 点击掉落装备或按 F 拾取<br>④ 底部传送可切换地图';
- if(scene.dungeon)document.querySelector('.scene-note').innerHTML='建议等级 '+scene.recommended_level+'–'+scene.max_level+'<br>① 骷髅／僵尸会主动追击<br>② 点击地面物品或按 F 拾取<br>③ M 查看出口，走入入口自动切图<br>④ 入口附近安全，注意持久与药品';
+ if(scene.dungeon)document.querySelector('.scene-note').innerHTML='建议等级 '+scene.recommended_level+'–'+scene.max_level+'<br>① 骷髅／僵尸会主动追击<br>② 点击地面物品或按 F 拾取<br>③ 使用底部传送切图，已开放入口可直接走入<br>④ 入口附近安全，注意持久与药品';
  $('death-dialog').querySelector('p').textContent=scene.dungeon?'回到本层入口恢复生命与魔法，等级和装备保留。':'回到村中恢复生命与魔法，等级和装备会保留。';
  $('revive-btn').textContent=scene.dungeon?'返回本层入口':'回村复活';
  setMusic(scene.music||null);

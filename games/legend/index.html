@@ -92,11 +92,11 @@
 <dialog id="death-dialog"><h2>你已倒下</h2><p>回到村中恢复生命与魔法，等级和装备会保留。</p><button id="revive-btn">回村复活</button></dialog>
 <dialog id="travel-dialog"><h2>选择目的地</h2><p>选择地图可直接进入。走到地面入口也会自动切图，层间可沿出口返回。灰色选项表示等级不足。</p>
 <div class="travel-group"><strong>主城</strong><div class="travel-grid"><button data-map="0">银杏山谷</button><button data-map="3">盟重土城</button><button data-map="1">沃玛森林</button><button data-waypoint="bicheng">比奇城</button><button data-waypoint="village">银杏村口</button></div></div>
-<div class="travel-group"><strong>毒蛇山谷</strong><div class="travel-grid"><button data-map="2" data-min-level="24">毒蛇山谷 · 24</button><button data-map="251" data-min-level="24">僵尸洞一层 · 24</button><button data-map="252" data-min-level="26">僵尸洞二层 · 26</button><button data-map="253" data-min-level="28">僵尸洞三层 · 28</button></div></div>
+<div class="travel-group"><strong>毒蛇山谷</strong><div class="travel-grid"><button data-map="2" data-min-level="24">毒蛇山谷 · 24</button><button data-map="251" data-min-level="24">毒蛇矿区一层 · 24</button><button data-map="252" data-min-level="26">毒蛇矿区二层 · 26</button></div></div>
 <div class="travel-group"><strong>沃玛寺庙</strong><div class="travel-grid"><button data-map="301" data-min-level="24">沃玛寺庙一层 · 24</button><button data-map="302" data-min-level="27">沃玛寺庙二层 · 27</button><button data-map="303" data-min-level="30">沃玛寺庙三层 · 30</button></div></div>
-<div class="travel-group"><strong>赤月峡谷</strong><div class="travel-grid"><button data-map="311" data-min-level="30">赤月峡谷入口 · 30</button><button data-map="312" data-min-level="33">赤月峡谷深处 · 33</button></div></div>
-<div class="travel-group"><strong>封魔谷</strong><div class="travel-grid"><button data-map="321" data-min-level="28">封魔谷 · 28</button><button data-map="322" data-min-level="30">封魔矿洞 · 30</button><button data-map="323" data-min-level="32">封魔深处 · 32</button></div></div>
-<div class="travel-group"><strong>高等级地宫</strong><div class="travel-grid"><button data-map="331" data-min-level="24">猪洞 · 24</button><button data-map="341" data-min-level="32">死亡峡谷 · 32</button><button data-map="351" data-min-level="35">一线天 · 35</button><button data-map="201">兽人古墓</button><button data-map="241">比奇僵尸洞</button></div></div>
+<div class="travel-group"><strong>赤月峡谷</strong><div class="travel-grid"><button data-map="311" data-min-level="30">赤月峡谷入口 · 30</button><button data-map="312" data-min-level="33">赤月峡谷 · 33</button></div></div>
+<div class="travel-group"><strong>封魔谷</strong><div class="travel-grid"><button data-map="321" data-min-level="28">封魔谷 · 28</button><button data-map="322" data-min-level="30">封魔矿区 · 30</button><button data-map="323" data-min-level="32">封魔殿 · 32</button></div></div>
+<div class="travel-group"><strong>高等级地宫</strong><div class="travel-grid"><button data-map="331" data-min-level="24">石墓一层 · 24</button><button data-map="341" data-min-level="32">死亡山谷·地牢一层东 · 32</button><button data-map="351" data-min-level="35">一线天 · 35</button><button data-map="201">兽人古墓</button><button data-map="241">比奇僵尸洞</button></div></div>
 <button id="close-travel">取消</button></dialog>
 <dialog id="map-dialog"><header><h2>地图与 NPC</h2><button id="close-map">×</button></header><div class="map-tools"><button id="map-all">全图</button><button id="map-near">当前位置</button><span id="map-position"></span></div><div class="map-layout"><canvas id="large-map" width="400" height="300"></canvas><div id="map-npcs"></div></div><p id="map-selection">白点：你 · 绿点：NPC · 红点：怪物（含鸡鹿）</p></dialog><dialog id="growth-dialog"><header><h2 id="growth-title"></h2><button id="close-growth" aria-label="关闭成长面板">×</button></header><div id="growth-content"></div><p id="growth-feedback" role="status"></p></dialog><style>/* Client frame + original paper-doll layers, arranged like the supplied equipment reference. */
 #growth-dialog.classic-character{top:50%;left:50%;width:max-content;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);padding:0;overflow:visible;background:none}
@@ -716,7 +716,7 @@ function changeScene(scene){
  for(const d of document.querySelectorAll('dialog[open]'))d.close();
  $('scene').querySelector('h2').textContent=scene.name;$('scene').querySelector('p').textContent=scene.province;
  document.querySelector('.scene-note').innerHTML='初入'+scene.name+'<br>① 出生点附近为安全区<br>② 走出村落，留意主动怪物<br>③ 点击掉落装备或按 F 拾取<br>④ 底部传送可切换地图';
- if(scene.dungeon)document.querySelector('.scene-note').innerHTML='建议等级 '+scene.recommended_level+'–'+scene.max_level+'<br>① 骷髅／僵尸会主动追击<br>② 点击地面物品或按 F 拾取<br>③ M 查看出口，走入入口自动切图<br>④ 入口附近安全，注意持久与药品';
+ if(scene.dungeon)document.querySelector('.scene-note').innerHTML='建议等级 '+scene.recommended_level+'–'+scene.max_level+'<br>① 骷髅／僵尸会主动追击<br>② 点击地面物品或按 F 拾取<br>③ 使用底部传送切图，已开放入口可直接走入<br>④ 入口附近安全，注意持久与药品';
  $('death-dialog').querySelector('p').textContent=scene.dungeon?'回到本层入口恢复生命与魔法，等级和装备保留。':'回到村中恢复生命与魔法，等级和装备会保留。';
  $('revive-btn').textContent=scene.dungeon?'返回本层入口':'回村复活';
  setMusic(scene.music||null);
