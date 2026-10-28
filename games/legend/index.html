@@ -306,6 +306,8 @@ const serverURL=p=>SERVER&&typeof p==='string'&&p.startsWith('/')?SERVER+p:p;
 const localAssetURL=p=>ASSET_BASE&&typeof p==='string'&&p.startsWith('/')?ASSET_BASE+p:p;
 const assetURL=p=>{
  if(typeof p!=='string'||!p.startsWith('/'))return p;
+ // Corrected dungeon tile sets are published together on Pages; avoid stale CDN misses.
+ if(ASSET_CDN&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p)&&currentScene?.map_binding_version>=2)return localAssetURL(p);
  if(ASSET_CDN)return ASSET_CDN+p;
  return localAssetURL(p);
 };
