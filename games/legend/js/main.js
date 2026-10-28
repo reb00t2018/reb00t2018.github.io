@@ -174,9 +174,12 @@ async function loadRegion(force=false){
  finally{regionPending.delete(requestKey)}})();regionPending.set(requestKey,pending);return pending;
 }
 
-const libMeta=new Map();
+const libMeta=new Map();let dungeonMetaPromise=null;
 function metaFor(lib){
- if(currentScene?.map_binding_version>=2&&window.LEGEND_MAP_ASSET_META?.[lib])return Promise.resolve(window.LEGEND_MAP_ASSET_META[lib]);
+ if(ASSET_WEBP&&currentScene?.map_binding_version>=2&&/^(?:Tiles\d*|SmTiles\d*|Objects\d*)$/.test(lib)){
+  if(!dungeonMetaPromise){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);dungeonMetaPromise=fetch('/api/map-assets.json',{signal:controller.signal}).then(r=>{if(!r.ok)throw Error('map metadata missing');return r.json()}).finally(()=>clearTimeout(timer)).catch(error=>{dungeonMetaPromise=null;throw error})}
+  return dungeonMetaPromise.then(m=>m[lib]||{});
+ }
  if(!libMeta.has(lib)){let timer;const pending=Promise.race([fetchAsset('/assets/'+lib+'/meta.json?v=all8').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('metadata timeout')),ASSET_WEBP?60000:8000)})]).finally(()=>clearTimeout(timer)).catch(e=>{if(libMeta.get(lib)===pending)libMeta.delete(lib);throw e});libMeta.set(lib,pending)}return libMeta.get(lib);
 }
 function sprite(lib,index){
