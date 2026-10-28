@@ -176,7 +176,7 @@ async function loadRegion(force=false){
 
 const libMeta=new Map();
 function metaFor(lib){
- if(!libMeta.has(lib)){let timer;const pending=Promise.race([fetchAsset('/assets/'+lib+'/meta.json?v=all8').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('metadata timeout')),8000)})]).finally(()=>clearTimeout(timer)).catch(e=>{if(libMeta.get(lib)===pending)libMeta.delete(lib);throw e});libMeta.set(lib,pending)}return libMeta.get(lib);
+ if(!libMeta.has(lib)){let timer;const pending=Promise.race([fetchAsset('/assets/'+lib+'/meta.json?v=all8').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('metadata timeout')),ASSET_WEBP?60000:8000)})]).finally(()=>clearTimeout(timer)).catch(e=>{if(libMeta.get(lib)===pending)libMeta.delete(lib);throw e});libMeta.set(lib,pending)}return libMeta.get(lib);
 }
 function sprite(lib,index){
  if(!lib||!Number.isInteger(index)||index<0)return null;const key=lib+'/'+index,old=spriteCache.get(key);
@@ -185,7 +185,7 @@ function sprite(lib,index){
  const singleMetadata=()=>fetchAsset('/assets/'+key+'.json').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()});
  const meta=ASSET_MANIFEST?metaFor(lib).then(m=>m[index]||singleMetadata(),singleMetadata):singleMetadata();let timer;
  const image=new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,'/assets/'+key+'.png',reject)});
- Promise.race([Promise.all([meta,image]),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('sprite timeout')),ASSET_WEBP?60000:12000)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});invalidateBackground();redraw()}).catch(()=>{f.failed=true;f.retryAt=performance.now()+2000*f.attempt;if(f.attempt<3)setTimeout(()=>{if(spriteCache.get(key)!==f)return;invalidateBackground();redraw()},Math.max(0,f.retryAt-performance.now())+1)}).finally(()=>clearTimeout(timer));return f;
+ Promise.race([Promise.all([meta,image]),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('sprite timeout')),ASSET_WEBP?60000:12000)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});invalidateBackground();redraw()}).catch(error=>{f.failed=true;f.error=error?.message||String(error);f.retryAt=performance.now()+2000*f.attempt;if(f.attempt<3)setTimeout(()=>{if(spriteCache.get(key)!==f)return;invalidateBackground();redraw()},Math.max(0,f.retryAt-performance.now())+1)}).finally(()=>clearTimeout(timer));return f;
 }
 
 function draw(){
