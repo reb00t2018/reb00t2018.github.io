@@ -5,7 +5,7 @@ function touchCandidate(skill,dx=0,dy=0,directional=false){
  if(!me)return null;
  const norm=Math.hypot(dx,dy),selected=monsters.get(attackTarget);
  const candidates=[...monsters.values()].filter(m=>m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=skill.range);
- const visible=m=>{const x=canvas.width/2+24+(m.x-me.x)*TW,y=gameCenterY()+(m.y-me.y)*TH;return x>=0&&x<=canvas.width&&y>=20&&y<=canvas.height-20};
+ const visible=m=>{const x=viewportWidth/2+24+(m.x-me.x)*TW,y=gameCenterY()+(m.y-me.y)*TH;return x>=0&&x<=viewportWidth&&y>=20&&y<=viewportHeight-20};
  const score=m=>{const x=(m.x-me.x)*TW,y=(m.y-me.y)*TH,n=Math.hypot(x,y);return n&&norm?(x*dx+y*dy)/(n*norm):1};
  if(directional)return candidates.filter(m=>visible(m)&&score(m)>=.72).sort((a,b)=>score(b)-score(a)||Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0]||null;
  if(selected&&candidates.includes(selected)&&visible(selected))return selected;

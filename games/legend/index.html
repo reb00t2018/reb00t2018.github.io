@@ -91,7 +91,7 @@
 </div></div>
 <dialog id="death-dialog"><h2>你已倒下</h2><p>回到村中恢复生命与魔法，等级和装备会保留。</p><button id="revive-btn">回村复活</button></dialog>
 <dialog id="travel-dialog"><h2>选择目的地</h2><p>选择地图可直接进入。走到地面入口也会自动切图，层间可沿出口返回。灰色选项表示等级不足。</p>
-<div class="travel-group"><strong>主城</strong><div class="travel-grid"><button data-map="0">银杏山谷</button><button data-map="3">盟重土城</button><button data-map="1">沃玛森林</button><button data-waypoint="bicheng">比奇城</button><button data-waypoint="village">银杏村口</button></div></div>
+<div class="travel-group"><strong>主城</strong><div class="travel-grid"><button data-map="0">比奇城中心</button><button data-map="3">盟重土城</button><button data-map="1">沃玛森林</button><button data-waypoint="village">银杏村口</button></div></div>
 <div class="travel-group"><strong>毒蛇山谷</strong><div class="travel-grid"><button data-map="2" data-min-level="24">毒蛇山谷 · 24</button><button data-map="251" data-min-level="24">毒蛇矿区一层 · 24</button><button data-map="252" data-min-level="26">毒蛇矿区二层 · 26</button></div></div>
 <div class="travel-group"><strong>沃玛寺庙</strong><div class="travel-grid"><button data-map="301" data-min-level="24">沃玛寺庙一层 · 24</button><button data-map="302" data-min-level="27">沃玛寺庙二层 · 27</button><button data-map="303" data-min-level="30">沃玛寺庙三层 · 30</button></div></div>
 <div class="travel-group"><strong>赤月峡谷</strong><div class="travel-grid"><button data-map="311" data-min-level="30">赤月峡谷入口 · 30</button><button data-map="312" data-min-level="33">赤月峡谷 · 33</button></div></div>
@@ -308,6 +308,8 @@ const assetURL=p=>{
  if(typeof p!=='string'||!p.startsWith('/'))return p;
  // Corrected dungeon tiles are mirrored on the game server; Pages remains the fallback.
  if(ASSET_CDN&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p)&&currentScene?.map_binding_version>=2)return serverURL('/map-assets/'+p.slice('/assets/'.length));
+ const weapon=/^\/assets\/Weapon\/(\d+)\./.exec(p);
+ if(ASSET_CDN&&((weapon&&Number(weapon[1])>=16800&&Number(weapon[1])<17654)||p.startsWith('/assets/Weapon/meta.json')))return localAssetURL(p);
  if(ASSET_CDN)return ASSET_CDN+p;
  return localAssetURL(p);
 };
@@ -338,6 +340,7 @@ window.fetch=async function(input,init={}){
  return res;
 };
 const $=id=>document.getElementById(id),canvas=$('canvas'),ctx=canvas.getContext('2d');
+let viewportWidth=innerWidth,viewportHeight=innerHeight;
 const bgCanvas=document.createElement('canvas'),bgctx=bgCanvas.getContext('2d');let bgKey='',bgOriginX=0,bgOriginY=0;function invalidateBackground(){bgKey=''}
 const TW=48,TH=32,classes={warrior:'战士',wizard:'法师',taoist:'道士'};
 let bagMulti=false,bagPending='',discardIds=[];const bagSelection=new Set();
@@ -345,7 +348,7 @@ let growthTab="quest",selectedSkillId=null;
 let portals=[],activeNPC=null,bagRepairNPC=null,bagSellNPC=null,bagRepairMessage='';
 let merchantMode='buy',merchantPage=0,merchantSelected='',merchantPending=false,merchantVisible=true,merchantMessage='';
 let ws=null,me=null,chatOpen=false,onlineCount=0,onlineLoaded=false,roles=[],selectedRole=null,selectedItem='cloth',npcs=[],npcHits=[],drawing=false,equipPending=false,inviteBound=false,inviteChecked=false,accountBound=false,accountChecked=false,loginMode='invite';
-let classicScale=1,currentScene={id:0,name:'银杏山谷',province:'比奇省',music:'/audio/field2.wav'},sceneEpoch=0;
+let classicScale=1,currentScene={id:0,name:'比奇省',province:'比奇省',music:'/audio/field2.wav'},sceneEpoch=0;
 for(const id of ['chat','chat-form','hint','game-actions'])$('classic-panel').appendChild($(id));
 $('attack-btn').textContent='攻击';$('talk-btn').textContent='交谈';$('switch-btn').textContent='选角';
 const players=new Map(),mapCache=new Map(),regionCache=new Set(),spriteCache=new Map();
@@ -478,7 +481,7 @@ function metaFor(lib){
   if(!dungeonMetaPromise){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);dungeonMetaPromise=fetch('/api/map-assets.json',{signal:controller.signal}).then(r=>{if(!r.ok)throw Error('map metadata missing');return r.json()}).finally(()=>clearTimeout(timer)).catch(error=>{dungeonMetaPromise=null;throw error})}
   return dungeonMetaPromise.then(m=>m[lib]||{});
  }
- if(!libMeta.has(lib)){let timer;const pending=Promise.race([fetchAsset('/assets/'+lib+'/meta.json?v=all8').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('metadata timeout')),ASSET_WEBP?60000:8000)})]).finally(()=>clearTimeout(timer)).catch(e=>{if(libMeta.get(lib)===pending)libMeta.delete(lib);throw e});libMeta.set(lib,pending)}return libMeta.get(lib);
+ if(!libMeta.has(lib)){let timer;const pending=Promise.race([fetchAsset('/assets/'+lib+'/meta.json?v=clarity1028').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('metadata timeout')),ASSET_WEBP?60000:8000)})]).finally(()=>clearTimeout(timer)).catch(e=>{if(libMeta.get(lib)===pending)libMeta.delete(lib);throw e});libMeta.set(lib,pending)}return libMeta.get(lib);
 }
 function sprite(lib,index){
  if(!lib||!Number.isInteger(index)||index<0)return null;const key=lib+'/'+index,old=spriteCache.get(key);
@@ -486,39 +489,39 @@ function sprite(lib,index){
  const f={ready:false,attempt:(old?.attempt||0)+1};spriteCache.set(key,f);
  const singleMetadata=()=>fetchAsset('/assets/'+key+'.json').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()});
  const meta=ASSET_MANIFEST?metaFor(lib).then(m=>m[index]||singleMetadata(),singleMetadata):singleMetadata();let timer;
- const image=new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,'/assets/'+key+'.png',reject)});
+ const image=meta.then(m=>{if(m.empty){const blank=document.createElement('canvas');blank.width=blank.height=1;return blank}return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,'/assets/'+key+'.png',reject)})});
  Promise.race([Promise.all([meta,image]),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('sprite timeout')),ASSET_WEBP?60000:12000)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});invalidateBackground();redraw()}).catch(error=>{f.failed=true;f.error=error?.message||String(error);f.retryAt=performance.now()+2000*f.attempt;if(f.attempt<3)setTimeout(()=>{if(spriteCache.get(key)!==f)return;invalidateBackground();redraw()},Math.max(0,f.retryAt-performance.now())+1)}).finally(()=>clearTimeout(timer));return f;
 }
 
 function draw(){
- ctx.fillStyle='#10130d';ctx.fillRect(0,0,canvas.width,canvas.height);if(!me)return;
- const now=performance.now(),camera=positionOf(me,motions.get(me.id),now),cx=Math.floor(camera.x*TW-canvas.width/2),cy=Math.floor(camera.y*TH-gameCenterY());npcHits=[];monsterHits=[];playerHits=[];dropHits=[];updateGate();
- const sx=Math.floor(cx/TW)-3,sy=Math.floor(cy/TH)-10,ex=Math.ceil((cx+canvas.width)/TW)+3,ey=Math.ceil((cy+canvas.height)/TH)+10;
+ ctx.fillStyle='#10130d';ctx.fillRect(0,0,viewportWidth,viewportHeight);if(!me)return;
+ const now=performance.now(),camera=positionOf(me,motions.get(me.id),now),cx=Math.floor(camera.x*TW-viewportWidth/2),cy=Math.floor(camera.y*TH-gameCenterY());npcHits=[];monsterHits=[];playerHits=[];dropHits=[];updateGate();
+ const sx=Math.floor(cx/TW)-3,sy=Math.floor(cy/TH)-10,ex=Math.ceil((cx+viewportWidth)/TW)+3,ey=Math.ceil((cy+viewportHeight)/TH)+10;
  function tile(c,layer){if(c[layer]<0)return;const f=sprite(c[layer+'Library'],c[layer]);if(f?.ready)ctx.drawImage(f.im,c.x*TW-cx,layer==='back'?c.y*TH-cy:c.y*TH-cy+TH-f.height)}
  function tileOn(g,c,layer,ox,oy){if(c[layer]<0)return;const f=sprite(c[layer+'Library'],c[layer]);if(f?.ready)g.drawImage(f.im,c.x*TW-ox,layer==='back'?c.y*TH-oy:c.y*TH-oy+TH-f.height)}
  function actor(lib,index,x,y,fallback){let f=sprite(lib,index);if(!f?.ready&&fallback!==undefined)f=sprite(lib,fallback);if(f?.ready)ctx.drawImage(f.im,Math.round(x+f.offsetX),Math.round(y+f.offsetY));return f}
  function label(text,x,y,color){ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillStyle=color;ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.fillText(text,x,y);ctx.shadowBlur=0}
  function frameFor(table,motion,dir,seed=0){const moving=motion&&now-motion.start<motion.duration,action=moving?motion.action:'idle',a=table[action]||table.idle;const frame=moving?Math.min(a.count-1,Math.floor((now-motion.start)/motion.duration*a.count)):Math.floor((now+seed*53)/220)%a.count;return {index:a.offset+dir*a.stride+frame,a}}
- const bgStartX=Math.floor(cx/TW)-3,bgStartY=Math.floor(cy/TH)-10,bgW=Math.ceil(canvas.width/TW)+7,bgH=Math.ceil(canvas.height/TH)+21;
+ const bgStartX=Math.floor(cx/TW)-3,bgStartY=Math.floor(cy/TH)-10,bgW=Math.ceil(viewportWidth/TW)+7,bgH=Math.ceil(viewportHeight/TH)+21;
  const nextBgKey=`${me.map_id}:${bgStartX}:${bgStartY}:${bgW}:${bgH}`;
  if(bgKey!==nextBgKey||bgCanvas.width!==bgW*TW||bgCanvas.height!==bgH*TH){
-  bgCanvas.width=bgW*TW;bgCanvas.height=bgH*TH;bgctx.fillStyle='#10130d';bgctx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
+  bgCanvas.width=bgW*TW;bgCanvas.height=bgH*TH;bgctx.imageSmoothingEnabled=false;bgctx.fillStyle='#10130d';bgctx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
   for(let y=bgStartY;y<bgStartY+bgH;y++)for(let x=bgStartX;x<bgStartX+bgW;x++){const c=mapCache.get(`${x},${y}`);if(!c)continue;if(x%2===0&&y%2===0)tileOn(bgctx,c,'back',bgStartX*TW,bgStartY*TH);tileOn(bgctx,c,'middle',bgStartX*TW,bgStartY*TH)}
   bgKey=nextBgKey;bgOriginX=bgStartX;bgOriginY=bgStartY;
  }
  ctx.drawImage(bgCanvas,bgOriginX*TW-cx,bgOriginY*TH-cy);
  for(const d of groundDrops.values()){
-  const x=d.x*TW-cx+24,y=d.y*TH-cy+12;if(x<0||x>canvas.width||y<0||y>canvas.height)continue;
+  const x=d.x*TW-cx+24,y=d.y*TH-cy+12;if(x<0||x>viewportWidth||y<0||y>viewportHeight)continue;
   ctx.fillStyle='#e6be5855';ctx.beginPath();ctx.ellipse(x,y+8,17,7,0,0,Math.PI*2);ctx.fill();
   const f=sprite('Items',d.icon);if(f?.ready)ctx.drawImage(f.im,x-f.width/2,y-f.height/2);
   label(d.name+(d.required_level?' · Lv.'+d.required_level:''),x,y-22,d.required_level>=5?'#a9d6ff':'#f9dd79');dropHits.push({d,x:x-28,y:y-36,w:56,h:55});
  }
- for(const g of portals){const x=g.x*TW-cx+24,y=g.y*TH-cy+16;if(x<-100||x>canvas.width+100||y<-100||y>canvas.height+100)continue;ctx.strokeStyle='#d6bc6c';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y,22,10,0,0,Math.PI*2);ctx.stroke();label(g.name+' · 走入',x,y-18,'#ffe5a1')}
+ for(const g of portals){const x=g.x*TW-cx+24,y=g.y*TH-cy+16;if(x<-100||x>viewportWidth+100||y<-100||y>viewportHeight+100)continue;ctx.strokeStyle='#d6bc6c';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y,22,10,0,0,Math.PI*2);ctx.stroke();label(g.name+' · 走入',x,y-18,'#ffe5a1')}
  const entities=[];for(const n of npcs)entities.push({kind:'npc',p:n,pos:n});
  for(const m of monsters.values())if(m.hp>0)entities.push({kind:'monster',p:m,pos:positionOf(m,monsterMotions.get(m.id),now)});
  for(const p of players.values()){entities.push({kind:'player',p,pos:positionOf(p,motions.get(p.id),now)});if(p.companion?.hp>0)entities.push({kind:'companion',p:p.companion,pos:positionOf(p.companion,companionMotions.get(p.id),now)})}
  entities.sort((a,b)=>a.pos.y-b.pos.y);let ei=0;
- function drawEntity(e){const p=e.p,x=e.pos.x*TW-cx,py=e.pos.y*TH-cy;if(x < -200||x>canvas.width+200||py < -200||py>canvas.height+200)return;
+ function drawEntity(e){const p=e.p,x=e.pos.x*TW-cx,py=e.pos.y*TH-cy;if(x < -200||x>viewportWidth+200||py < -200||py>viewportHeight+200)return;
   if(e.kind==='npc'){const f=actor(p.library||'npc',p.frame+(p.guard?Math.floor(now/250)%4:0),x,py);label(p.name,x+24,py-65,'#d4f1a6');if(f?.ready)npcHits.push({n:p,x:x+f.offsetX-8,y:py+f.offsetY-18,w:f.width+16,h:f.height+24});return}
   if(e.kind==='monster'||e.kind==='companion'){
    const af=frameFor(monsterAnimations,e.kind==='companion'?companionMotions.get(p.owner_id):monsterMotions.get(p.id),p.dir,p.id),index=(p.base||0)+af.index;
@@ -546,8 +549,8 @@ function draw(){
  if(typeof drawTouchAim==='function')drawTouchAim(cx,cy);
  if(destination){const x=destination.x*TW-cx+24,y=destination.y*TH-cy+16;ctx.strokeStyle='#e4c27a';ctx.beginPath();ctx.ellipse(x,y,16,8,0,0,Math.PI*2);ctx.stroke()}
 }
-function gameCenterY(){return (canvas.height-190*classicScale)/2}
-function resize(){classicScale=Math.min(1,innerWidth/800);document.documentElement.style.setProperty('--classic-scale',classicScale);canvas.width=innerWidth;canvas.height=innerHeight;ctx.imageSmoothingEnabled=false;invalidateBackground();$('stage').style.transform=`scale(${Math.min(1,innerWidth/800,innerHeight/650)})`;redraw()}
+function gameCenterY(){return (viewportHeight-190*classicScale)/2}
+function resize(){classicScale=Math.min(1,innerWidth/800);document.documentElement.style.setProperty('--classic-scale',classicScale);viewportWidth=innerWidth;viewportHeight=innerHeight;const density=Math.min(3,Math.max(1,window.devicePixelRatio||1));canvas.style.width=viewportWidth+'px';canvas.style.height=viewportHeight+'px';canvas.width=Math.round(viewportWidth*density);canvas.height=Math.round(viewportHeight*density);ctx.setTransform(canvas.width/viewportWidth,0,0,canvas.height/viewportHeight,0,0);ctx.imageSmoothingEnabled=false;invalidateBackground();$('stage').style.transform=`scale(${Math.min(1,innerWidth/800,innerHeight/650)})`;redraw()}
 window.addEventListener('resize',resize);resize();loadRoles();
 const keyDir={ArrowUp:0,w:0,ArrowRight:2,d:2,ArrowDown:4,s:4,ArrowLeft:6,a:6,q:7,e:1,z:5,c:3};
 // Animation timing is driven by accepted server actions; rendering interpolates between tiles.
@@ -692,7 +695,7 @@ function canvasTarget(e,running=false){
  pickupTarget=null;
  const hit=[...npcHits,...monsterHits].filter(h=>e.clientX>=h.x&&e.clientX<=h.x+h.w&&e.clientY>=h.y&&e.clientY<=h.y+h.h).sort((a,b)=>(b.n||b.m).y-(a.n||a.m).y)[0];
  if(hit&&!running){if(hit.m)chooseAttack(hit.m.id);else talkToNPC(hit.n);return}
- const p=positionOf(me,motions.get(me.id)),x=Math.floor((e.clientX+p.x*TW-canvas.width/2)/TW),y=Math.floor((e.clientY+p.y*TH-gameCenterY())/TH),cell=mapCache.get(`${x},${y}`);
+ const p=positionOf(me,motions.get(me.id)),x=Math.floor((e.clientX+p.x*TW-viewportWidth/2)/TW),y=Math.floor((e.clientY+p.y*TH-gameCenterY())/TH),cell=mapCache.get(`${x},${y}`);
  if(!cell||cell.blocked){status('这里无法通行');return}attackTarget=null;destination={x,y,run:running||runMode};nextInputAt=0;updateTarget();inputTick();
 }
 canvas.onclick=e=>canvasTarget(e);canvas.oncontextmenu=e=>{e.preventDefault();canvasTarget(e,true)};
@@ -729,14 +732,14 @@ function changeScene(scene){
  for(const d of document.querySelectorAll('dialog[open]'))d.close();
  $('scene').querySelector('h2').textContent=scene.name;$('scene').querySelector('p').textContent=scene.province;
  document.querySelector('.scene-note').innerHTML='初入'+scene.name+'<br>① 出生点附近为安全区<br>② 走出村落，留意主动怪物<br>③ 点击掉落装备或按 F 拾取<br>④ 底部传送可切换地图';
- if(scene.dungeon)document.querySelector('.scene-note').innerHTML='建议等级 '+scene.recommended_level+'–'+scene.max_level+'<br>① 骷髅／僵尸会主动追击<br>② 点击地面物品或按 F 拾取<br>③ 使用底部传送切图，已开放入口可直接走入<br>④ 入口附近安全，注意持久与药品';
+ if(scene.dungeon)document.querySelector('.scene-note').innerHTML='建议等级 '+scene.recommended_level+'–'+scene.max_level+'<br>① 附近怪物会主动追击<br>② 点击地面物品或按 F 拾取<br>③ 使用底部传送切图，已开放入口可直接走入<br>④ 入口附近安全，注意持久与药品';
  $('death-dialog').querySelector('p').textContent=scene.dungeon?'回到本层入口恢复生命与魔法，等级和装备保留。':'回到村中恢复生命与魔法，等级和装备会保留。';
  $('revive-btn').textContent=scene.dungeon?'返回本层入口':'回村复活';
  setMusic(scene.music||null);
 }
 function updateMapMusic(){if(!me)return;const city=me.map_id===0&&Math.abs(me.x-343)+Math.abs(me.y-245)<=145;const town=me.map_id===3;const room=[102,103,108,109].includes(me.map_id);setMusic(city||town||room?null:('music' in currentScene?currentScene.music:'/audio/field2.wav'))}
 $('death-dialog').oncancel=e=>e.preventDefault();$('revive-btn').onclick=()=>send('revive');
-$('travel-btn').onclick=()=>{if(!me||me.dead)return;stopActions();for(const b of document.querySelectorAll('[data-map]')){const need=Number(b.dataset.minLevel||0);b.disabled=Number(b.dataset.map)===me.map_id||(!!need&&me.level<need);b.title=need&&me.level<need?'需要 '+need+' 级':''}$('travel-dialog').showModal()};
+$('travel-btn').onclick=()=>{if(!me||me.dead)return;stopActions();for(const b of document.querySelectorAll('[data-map]')){const need=Number(b.dataset.minLevel||0);b.disabled=(Number(b.dataset.map)===me.map_id&&me.map_id!==0)||(!!need&&me.level<need);b.title=need&&me.level<need?'需要 '+need+' 级':''}$('travel-dialog').showModal()};
 $('close-travel').onclick=()=>$('travel-dialog').close();document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{const need=Number(b.dataset.minLevel||0);if(need&&me&&me.level<need){status('需要 '+need+' 级才能进入');return}if(send('travel',{map_id:Number(b.dataset.map)})){$('travel-dialog').close();status('正在传送…')}});
 
 function updateDrops(rows){groundDrops.clear();for(const d of rows)groundDrops.set(d.id,d);if(pickupTarget&&!groundDrops.has(pickupTarget))pickupTarget=null}
@@ -802,12 +805,12 @@ document.querySelectorAll('[data-waypoint]').forEach(b=>b.onclick=()=>{if(send('
 
 const mapImages=new Map();let mapFocus=null,mapWhole=true,mapSelected=null;
 function overviewImage(){if(!me)return null;const id=me.map_id;if(!mapImages.has(id)){const im=new Image();im.src=serverURL('/api/minimap.png?map_id='+id);mapImages.set(id,im)}return mapImages.get(id)}
-function drawOverview(canvas,small){if(!me)return;const im=overviewImage(),c=canvas.getContext('2d');c.fillStyle='#11150e';c.fillRect(0,0,canvas.width,canvas.height);if(!im?.complete||!im.naturalWidth)return;
- const whole=!small&&mapWhole,focus=small?me:(mapFocus||me),sw=whole?im.naturalWidth:(small?80:140),sh=whole?im.naturalHeight:sw*1.5*canvas.height/canvas.width;
+function drawOverview(canvas,small){if(!me)return;const im=overviewImage(),c=canvas.getContext('2d'),rect=canvas.getBoundingClientRect(),width=rect.width||canvas.width,height=rect.height||canvas.height,density=Math.min(3,Math.max(1,window.devicePixelRatio||1)),bw=Math.round(width*density),bh=Math.round(height*density);if(canvas.width!==bw||canvas.height!==bh){canvas.width=bw;canvas.height=bh}c.setTransform(canvas.width/width,0,0,canvas.height/height,0,0);c.fillStyle='#11150e';c.fillRect(0,0,width,height);if(!im?.complete||!im.naturalWidth)return;
+ const whole=!small&&mapWhole,focus=small?me:(mapFocus||me),sw=whole?im.naturalWidth:(small?80:140),sh=whole?im.naturalHeight:sw*1.5*height/width;
  const left=whole?0:focus.x-sw/2,top=whole?0:focus.y-sh/2;
- const scale=Math.min(canvas.width/(sw*1.5),canvas.height/sh),dw=sw*1.5*scale,dh=sh*scale,ox=(canvas.width-dw)/2,oy=(canvas.height-dh)/2;
+ const scale=Math.min(width/(sw*1.5),height/sh),dw=sw*1.5*scale,dh=sh*scale,ox=(width-dw)/2,oy=(height-dh)/2;
  c.imageSmoothingEnabled=false;c.drawImage(im,left,top,sw,sh,ox,oy,dw,dh);
- const point=(p,color,size)=>{const x=ox+(p.x-left)/sw*dw,y=oy+(p.y-top)/sh*dh;if(x<0||y<0||x>canvas.width||y>canvas.height)return;c.fillStyle=color;c.strokeStyle='#10100a';c.beginPath();c.arc(x,y,size,0,Math.PI*2);c.fill();c.stroke();return {x,y}};
+ const point=(p,color,size)=>{const x=ox+(p.x-left)/sw*dw,y=oy+(p.y-top)/sh*dh;if(x<0||y<0||x>width||y>height)return;c.fillStyle=color;c.strokeStyle='#10100a';c.beginPath();c.arc(x,y,size,0,Math.PI*2);c.fill();c.stroke();return {x,y}};
  for(const m of monsters.values())if(m.hp>0)point(m,'#ff3838',small?2.5:3);
  for(const g of portals)point(g,'#79c9ed',small?2:4);
  for(const n of npcs){const p=point(n,n.id===mapSelected?'#f8e899':'#9bd47c',small?2:3);if(p&&!small&&n.id===mapSelected){c.font='14px sans-serif';c.textAlign='center';c.fillStyle='#fff0bd';c.fillText(n.name,p.x,p.y-10)}}
@@ -1142,4 +1145,4 @@ function tickQuestRoute(){
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key))cancelQuestRoute()});
 
-</script><script src="js/touch-controls.js?v=touch-cast1"></script></html>
+</script><script src="js/touch-controls.js?v=clarity1028"></script></html>
