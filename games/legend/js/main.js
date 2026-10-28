@@ -176,6 +176,7 @@ async function loadRegion(force=false){
 
 const libMeta=new Map();
 function metaFor(lib){
+ if(currentScene?.map_binding_version>=2&&window.LEGEND_MAP_ASSET_META?.[lib])return Promise.resolve(window.LEGEND_MAP_ASSET_META[lib]);
  if(!libMeta.has(lib)){let timer;const pending=Promise.race([fetchAsset('/assets/'+lib+'/meta.json?v=all8').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('metadata timeout')),ASSET_WEBP?60000:8000)})]).finally(()=>clearTimeout(timer)).catch(e=>{if(libMeta.get(lib)===pending)libMeta.delete(lib);throw e});libMeta.set(lib,pending)}return libMeta.get(lib);
 }
 function sprite(lib,index){
