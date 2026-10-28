@@ -358,7 +358,7 @@ const assetURL=p=>{
  // Corrected dungeon tiles are mirrored on the game server; Pages remains the fallback.
  if(ASSET_CDN&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p)&&currentScene?.map_binding_version>=2)return serverURL('/map-assets/'+p.slice('/assets/'.length));
  const weapon=/^\/assets\/Weapon\/(\d+)\./.exec(p);
- if(ASSET_CDN&&((weapon&&Number(weapon[1])>=16800&&Number(weapon[1])<17654)||p.startsWith('/assets/Weapon/meta.json')))return localAssetURL(p);
+ if(ASSET_CDN&&((weapon&&Number(weapon[1])>=16800&&Number(weapon[1])<17654)||p.startsWith('/assets/Weapon/meta.json')))return serverURL('/map-assets/'+p.slice('/assets/'.length));
  if(ASSET_CDN)return ASSET_CDN+p;
  return localAssetURL(p);
 };
