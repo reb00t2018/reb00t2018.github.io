@@ -1,5 +1,5 @@
 // Touch targeting is a client aid; the server still validates every cast.
-let touchAim=null,touchSkillReadyAt=0;
+let touchAim=null;
 function touchLayout(){return matchMedia('(max-width:820px), (pointer:coarse) and (max-width:1024px)').matches}
 function touchCandidate(skill,dx=0,dy=0,directional=false){
  if(!me)return null;
@@ -35,7 +35,7 @@ function bindTouchSkill(button,skill){
  button.addEventListener('pointerdown',e=>{
   if(!touchLayout()||e.button>0||touchAim||!me||me.dead||blockingDialog())return;
   e.preventDefault();e.stopPropagation();
-  if(performance.now()<touchSkillReadyAt){status('技能冷却中');return}
+  if(performance.now()<skillReadyAt){status('技能冷却中');return}
   if(me.mp<skill.mp){status('魔法不足');return}
   touchAim={pointer:e.pointerId,button,skill,x:e.clientX,y:e.clientY,dx:0,dy:0,dragged:false,cancelled:false,target:null};
   try{button.setPointerCapture(e.pointerId)}catch{}
@@ -50,17 +50,17 @@ function bindTouchSkill(button,skill){
   if(a.cancelled)return;
   if(a.skill.kind==='damage'&&!a.target){status('施法范围和瞄准方向内没有目标');return}
   if(castSkill(a.skill.id,{target:a.target,strictTarget:true,keepMoving:true})){
-   touchSkillReadyAt=performance.now()+2000;updateTouchCooldowns();
+   updateTouchCooldowns();
   }
  });
  for(const name of ['pointercancel','lostpointercapture'])button.addEventListener(name,e=>{if(touchAim?.pointer===e.pointerId)cancelTouchAim()});
  button.onclick=e=>{e.preventDefault();if(e.detail===0)castSkill(skill.id)};
 }
-function clearTouchCooldown(){touchSkillReadyAt=0;cancelTouchAim();updateTouchCooldowns()}
+function clearTouchCooldown(){skillReadyAt=0;cancelTouchAim();updateTouchCooldowns()}
 function updateTouchCooldowns(){
  if(!touchLayout())return;
  if(me?.dead&&touchAim)cancelTouchAim();
- const remain=Math.max(0,touchSkillReadyAt-performance.now());
+ const remain=Math.max(0,skillReadyAt-performance.now());
  for(const button of $('skill-hotbar').querySelectorAll('button')){
   const skill=me?.skills?.find(s=>s.id===button.dataset.skillId),low=skill&&me.mp<skill.mp;
   button.classList.toggle('cooling',remain>0);button.classList.toggle('low-mana',!!low);

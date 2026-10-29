@@ -115,14 +115,14 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
   if(m.op==='welcome'){me=m.data;$('classic-hud').hidden=false;document.body.classList.add('in-game');players.set(me.id,me);$('game-screen').style.display='block';$('login-screen').style.display='none';$('game-actions').hidden=false;status();loadRegion();hud();updateMapMusic();log('系统',`${me.name}来到${currentScene.name}。打开背包，准备好衣服与木剑。`)}
   if(m.op==='players'){for(const p of m.data)applyPlayer(p,false)}
   if(m.op==='monsters')updateMonsters(m.data);if(m.op==='pet_update')applyPlayer(m.data);
-  if(m.op==='party_invite'){status(m.data.from+' 邀请你组队，输入 /接受');log('组队',m.data.from+' 邀请你组队，输入 /接受')}if(m.op==='party'){renderParty(m.data)}if(m.op==='combat')receiveCombat(m.data);if(m.op==='rankings')receiveRankings(m.data);if(m.op==='skill_effect'){const p=m.data.player;addSkillEffect(m.data.skill||'heal',p.x,p.y,p.x,p.y)}
+  if(m.op==='party_invite'){status(m.data.from+' 邀请你组队，输入 /接受');log('组队',m.data.from+' 邀请你组队，输入 /接受')}if(m.op==='party'){renderParty(m.data)}if(m.op==='combat')receiveCombat(m.data);if(m.op==='rankings')receiveRankings(m.data);if(m.op==='skill_effect'){const p=m.data.player;if(p.id===me?.id){skillReadyAt=Math.max(skillReadyAt,performance.now()+2040);nextInputAt=Math.max(nextInputAt,performance.now()+(p.duration_ms||550)+40)}addSkillEffect(m.data.skill||'heal',p.x,p.y,p.x,p.y)}
   if(m.op==='npcs'){npcs=m.data;hud()}
   if(m.op==='join')applyPlayer(m.data,false);
   if(m.op==='move'||m.op==='inventory'){applyPlayer(m.data);if(m.data.id===me?.id){if(m.op==='inventory'){equipPending=false;if(bagPending){status(bagPending==='sort'?'背包已按类别整理并保存':'所选物品已销毁');bagPending='';bagSelection.clear();discardIds=[];bagMulti=false;}renderBag();if($('growth-dialog').open)renderGrowth();status('背包与装备已保存')}}}
   if(m.op==='leave'){players.delete(m.id);motions.delete(m.id);companionMotions.delete(m.id)}
   if(m.op==='chat')receiveChat(m.data);
   if(m.op==='dialogue'){showDialogue(m.data);status()}
-  if(m.op==='error'){if(typeof clearTouchCooldown==='function')clearTouchCooldown();if(bagRepairNPC)bagRepairMessage=m.msg;merchantPending=false;merchantMessage=m.msg;bagPending='';$('growth-feedback').textContent=m.msg;status(m.msg);log('提示',m.msg);equipPending=false;renderBag();renderServices();if($('growth-dialog').open)renderGrowth();if(!me)ws.close()}
+  if(m.op==='error'){if(typeof cancelTouchAim==='function')cancelTouchAim();nextInputAt=Math.max(nextInputAt,performance.now()+500);if(m.msg==='技能尚未冷却')skillReadyAt=Math.max(skillReadyAt,performance.now()+2040);else if(attackTarget){attackTarget=null;updateTarget()}if(bagRepairNPC)bagRepairMessage=m.msg;merchantPending=false;merchantMessage=m.msg;bagPending='';$('growth-feedback').textContent=m.msg;status(m.msg);log('提示',m.msg);equipPending=false;renderBag();renderServices();if($('growth-dialog').open)renderGrowth();if(!me)ws.close()}
   redraw();
  };
 };
@@ -258,7 +258,7 @@ const keyDir={ArrowUp:0,w:0,ArrowRight:2,d:2,ArrowDown:4,s:4,ArrowLeft:6,a:6,q:7
 const motions=new Map(),monsters=new Map(),monsterMotions=new Map(),companionMotions=new Map(),damageLabels=[];
 const groundDrops=new Map();let dropHits=[],pickupTarget=null;
 let playerHits=[],guardArrows=[];const skillEffects=[];let pkMode=false,questRoute=null,questRequest=0,rankingData=null,rankingTab='level';
-let monsterHits=[],attackTarget=null,destination=null,runMode=false,heldDirection=null,shiftHeld=false,nextInputAt=0,skillHotbarSig="";
+let monsterHits=[],attackTarget=null,destination=null,runMode=false,heldDirection=null,shiftHeld=false,nextInputAt=0,skillReadyAt=0,skillHotbarSig="";
 const heldKeys=new Map();
 const playerAnimations={idle:{offset:0,stride:8,count:4},walk:{offset:64,stride:8,count:6},run:{offset:128,stride:8,count:6},attack:{offset:192,stride:8,count:6}};
 const monsterAnimations={idle:{offset:0,stride:10,count:4},walk:{offset:80,stride:10,count:6},attack:{offset:160,stride:10,count:6}};
@@ -305,24 +305,26 @@ function receiveCombat(c){if(c.skill_id||c.skill_name){const p=players.get(c.att
  if(c.player)applyPlayer(c.player);
  const attacker=players.get(c.attacker_id);if(attacker&&me&&Math.max(Math.abs(attacker.x-me.x),Math.abs(attacker.y-me.y))<16){playSfx('swing');playMonsterSound(c.killed?c.sound_death:c.sound_hit,{x:c.target_x,y:c.target_y})}
  if(c.attacker_id===me?.id){
-  if(c.killed){attackTarget=null;if(c.drop)log('掉落',c.drop.name+'落在地上，点击或按 F 拾取');status(`击败${m?.name||c.target_name||'怪物'}，获得 ${c.exp||0} 点经验`);log('战斗',`击败${m?.name||c.target_name||'怪物'}，经验 +${c.exp||0}`)}
+  nextInputAt=Math.max(nextInputAt,performance.now()+(c.player?.duration_ms||me.attack_ms||550)+40);
+  if(c.skill_id||c.skill_name)skillReadyAt=Math.max(skillReadyAt,performance.now()+2040);
+  if(c.killed){if(attackTarget===c.target_id)attackTarget=null;if(c.drop)log('掉落',c.drop.name+'落在地上，点击或按 F 拾取');status(`击败${m?.name||c.target_name||'怪物'}，获得 ${c.exp||0} 点经验`);log('战斗',`击败${m?.name||c.target_name||'怪物'}，经验 +${c.exp||0}`)}
   if(c.leveled){playSfx('level');$('level-toast').textContent=`等级提升 · Lv.${me.level}`;$('level-toast').classList.add('show');setTimeout(()=>$('level-toast').classList.remove('show'),2600);log('成长',`升到 ${me.level} 级！生命和攻击提升。`)}
  }
 }
-function resetControls(){if(typeof clearTouchCooldown==='function')clearTouchCooldown();resetJoystick();skillHotbarSig="";onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();companionMotions.clear();damageLabels.length=0;updateTarget()}
+function resetControls(){skillReadyAt=0;if(typeof clearTouchCooldown==='function')clearTouchCooldown();resetJoystick();skillHotbarSig="";onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();companionMotions.clear();damageLabels.length=0;updateTarget()}
 function toggleRun(){runMode=!runMode;$('run-btn').textContent=runMode?'奔跑':'行走';$('run-btn').setAttribute('aria-pressed',String(runMode))}
 $('run-btn').textContent='行走';$('run-btn').onclick=toggleRun;
-function chooseAttack(id){if(!me)return;const m=monsters.get(id);if(!m||m.hp<=0)return;pickupTarget=null;attackTarget=id;destination=null;heldKeys.clear();heldDirection=null;nextInputAt=0;updateTarget();status(`目标：${m.name}，靠近后自动攻击；Esc 取消`)}
+function chooseAttack(id){if(!me)return;const m=monsters.get(id);if(!m||m.hp<=0)return;pickupTarget=null;attackTarget=id;destination=null;heldKeys.clear();heldDirection=null;nextInputAt=0;updateTarget();cancelQuestRoute();status(`目标：${m.name}，自动释放攻击技能；移动或 Esc 取消`);inputTick()}
 function attackNearest(){if(!me)return;const candidates=[...monsters.values()].filter(m=>m.hp>0).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y));if(candidates.length)chooseAttack(candidates[0].id);else status('附近没有怪物，稍后会重新刷新')}
 $('attack-btn').onclick=attackNearest;
 const deltas=[[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];
 function canStep(x,y,dir){const [dx,dy]=deltas[dir],walkable=(a,b)=>{const c=mapCache.get(a+','+b);return !!c&&!c.blocked};return walkable(x+dx,y+dy)&&(!dx||!dy||(walkable(x+dx,y)&&walkable(x,y+dy)))}
 function canMelee(from,to){const dx=to.x-from.x,dy=to.y-from.y;if(Math.max(Math.abs(dx),Math.abs(dy))>1)return false;if(!dx&&!dy)return true;const dir=deltas.findIndex(d=>d[0]===dx&&d[1]===dy);return dir>=0&&canStep(from.x,from.y,dir)}
-function pathDirection(target,adjacent=false){
+function pathDirection(target,adjacent=false,reach=1){
  const start={x:me.x,y:me.y,first:null},queue=[start],seen=new Set([`${me.x},${me.y}`]);
  for(let i=0;i<queue.length&&i<6000;i++){
   const p=queue[i],distance=Math.max(Math.abs(p.x-target.x),Math.abs(p.y-target.y));
-  if(adjacent?canMelee(p,target):distance===0)return p.first;
+  if(adjacent?(reach>1?distance<=reach:canMelee(p,target)):distance===0)return p.first;
   const order=deltas.map((d,dir)=>({dir,score:Math.hypot(p.x+d[0]-target.x,p.y+d[1]-target.y)})).sort((a,b)=>a.score-b.score);
   for(const {dir}of order){if(!canStep(p.x,p.y,dir))continue;const [dx,dy]=deltas[dir],x=p.x+dx,y=p.y+dy,key=`${x},${y}`;if(seen.has(key))continue;seen.add(key);queue.push({x,y,first:p.first??dir})}
  }
@@ -339,7 +341,8 @@ $('mobile-joystick').addEventListener('pointerdown',e=>{if(!me||me.dead||e.butto
 $('mobile-joystick').addEventListener('pointermove',e=>{e.preventDefault();joystickMove(e)});
 $('mobile-joystick').addEventListener('pointerup',joystickEnd);$('mobile-joystick').addEventListener('pointercancel',joystickEnd);$('mobile-joystick').addEventListener('lostpointercapture',joystickEnd);
 function inputTick(){
- if(!me||me.dead||chatOpen||blockingDialog()){if(questRoute)cancelQuestRoute();return}
+ if(!me||me.dead||document.hidden||chatOpen||blockingDialog()){if(questRoute)cancelQuestRoute();return}
+ if(typeof touchAim!=='undefined'&&touchAim)return;
  if(performance.now()<nextInputAt)return;
  const held=heldDirection??[...heldKeys.values()].at(-1);
  if(held!==undefined&&held!==null){cancelQuestRoute();pickupTarget=null;destination=null;attackTarget=null;requestMove(held,runMode||shiftHeld);return}
@@ -349,8 +352,11 @@ function inputTick(){
   const dir=pathDirection(d,true);if(dir!==null)requestMove(dir,false);else{pickupTarget=null;status('无法到达掉落物')}return;
  }
  if(attackTarget){const m=monsters.get(attackTarget);if(!m||m.hp<=0){attackTarget=null;updateTarget();return}
+  const skill=autoAttackSkill(),reach=skill?Math.max(1,skill.range):1,inRange=Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=reach&&(reach>1||canMelee(me,m));
+  if(skill&&inRange&&performance.now()>=skillReadyAt&&castSkill(skill.id,{target:m,strictTarget:true,autoAttack:true}))return;
   if(canMelee(me,m)){send('attack',{target_id:m.id});nextInputAt=performance.now()+(me.attack_ms||550)+20;return}
-  const dir=pathDirection(m,true);if(dir!==null)requestMove(dir,false);else{status('目标暂时无法到达，请换个位置');attackTarget=null;updateTarget()}return;
+  if(skill&&inRange)return;
+  const dir=pathDirection(m,true,reach);if(dir!==null)requestMove(dir,false);else{status('目标暂时无法到达，请换个位置');attackTarget=null;updateTarget()}return;
  }
  if(destination){if(me.x===destination.x&&me.y===destination.y){destination=null;return}const dir=pathDirection(destination);if(dir===null){status('该位置无法到达');destination=null;return}const distance=Math.max(Math.abs(destination.x-me.x),Math.abs(destination.y-me.y));requestMove(dir,destination.run&&distance>=2)}
 }
@@ -575,11 +581,17 @@ $('quest-btn').onclick=()=>openGrowth('quest');$('quest-tracker').onclick=()=>op
 function growthButton(label,action,disabled=false){const b=document.createElement('button');b.textContent=label;b.disabled=disabled;b.onclick=action;return b}
 function renderGrowth(){if(!me)return;const dialog=$('growth-dialog'),box=$('growth-content');box.replaceChildren();dialog.classList.toggle('classic-skills',growthTab==='skills');dialog.classList.toggle('classic-character',growthTab==='attributes');$('growth-title').textContent={quest:'玛法主线',skills:'职业技能与练功',attributes:'人物属性'}[growthTab];
  if(growthTab==='quest'){const q=me.journey;if(!q)return;const card=document.createElement('section');card.className='growth-card';const title=document.createElement('h3');title.textContent=(q.completed?'':'第'+(q.stage+1)+'章 · ')+q.title;card.appendChild(title);for(const text of [q.goal,q.blocked_reason||'',q.ready?'任务目标已完成，请靠近交付 NPC 领取奖励。':'',q.required_level?'需求等级：'+q.required_level+(me.level<q.required_level?'（当前不足）':''):'',q.target?'进度：'+q.kills+' / '+q.target:'',q.reward_exp?'奖励：经验 '+q.reward_exp+' · 金币 '+q.reward_gold+(q.stage===0||q.stage===2?' · 本职业技能书':''):'']){if(!text)continue;const p=document.createElement('p');p.textContent=text;card.appendChild(p)}const actions=document.createElement('div');actions.className='actions';if(!q.completed){const near=me.map_id===q.npc_map_id&&npcs.some(n=>n.id===q.npc_id&&Math.max(Math.abs(n.x-me.x),Math.abs(n.y-me.y))<=6);actions.appendChild(growthButton(q.ready&&!near?'前往领取奖励':'领取奖励',()=>near?send('claim_quest'):startQuestRoute(),!q.ready));actions.appendChild(growthButton('自动寻路（可跨图传送）',()=>startQuestRoute()));actions.appendChild(growthButton('查找交付 NPC',()=>{const n=npcs.find(n=>n.id===q.npc_id);if(!n){$('growth-feedback').textContent='该 NPC 在其他地图，请按任务说明前往。';return}$('growth-dialog').close();openMap();mapFocus=n;mapSelected=n.id;mapWhole=false;mapList()}))}card.appendChild(actions);box.appendChild(card);return}
- if(growthTab==='skills'){const perk=document.createElement('p');perk.textContent=me.level<20?'成长福利：达到20级自动学会本职业基础技能，无需另买技能书。':'本职业20级以内的基础技能已自动学会，后续高阶技能仍需技能书。';box.appendChild(perk);const all=me.skills||[],sk=all.find(v=>v.id===selectedSkillId)||all[0];if(!sk)return;selectedSkillId=sk.id;const panel=document.createElement('div');panel.className='skill-book-panel';const close=growthButton('关闭',()=>dialog.close());close.className='panel-close';close.setAttribute('aria-label','关闭技能书');panel.appendChild(close);const scroll=document.createElement('img');scroll.className='skill-scroll';setImage(scroll,'/assets/Items/261.png');scroll.alt='客户端卷轴素材';panel.appendChild(scroll);const tabs=document.createElement('div');tabs.className='skill-tabs';for(const row of all){const b=growthButton(row.name+' · '+(row.rank?'技能 '+row.rank+' 级':'未学习'),()=>{selectedSkillId=row.id;renderGrowth()});b.classList.toggle('selected',row.id===sk.id);tabs.appendChild(b)}panel.appendChild(tabs);const detail=document.createElement('div');detail.className='skill-detail';const title=document.createElement('strong');title.textContent=sk.name+' · '+(sk.rank?'熟练度 '+sk.practice+'/60':'技能书 '+sk.books+' 本');detail.appendChild(title);const info=document.createElement('p');info.textContent='要求 Lv.'+sk.required_level+' · '+(sk.passive?'被动生效':'消耗 '+sk.mp+' MP · '+(sk.range?'距离 '+sk.range:'自身治疗'));detail.appendChild(info);const actions=document.createElement('div');actions.className='actions';actions.appendChild(growthButton('购买技能书 · '+sk.price+' 金币',()=>send('buy_book',{skill_id:sk.id}),!!sk.rank||sk.books>0));actions.appendChild(growthButton('学习',()=>send('learn',{skill_id:sk.id}),!!sk.rank||!sk.books||me.level<sk.required_level));if(sk.rank){actions.appendChild(growthButton(me.training===sk.id?'停止练功':'自动练功',()=>send('train',{skill_id:me.training===sk.id?'':sk.id}),sk.rank>=3));if(!sk.passive)actions.appendChild(growthButton('施放',()=>{dialog.close();castSkill(sk.id)}))}detail.appendChild(actions);panel.appendChild(detail);box.appendChild(panel);const help=document.createElement('p');help.className='skill-book-help';help.textContent='靠近向导、武馆教头或书店可购买与练功。F1–F8 或数字 1–8 施放快捷栏中的主动技能；移动、战斗或离线会停止练功。';box.appendChild(help);return}
+ if(growthTab==='skills'){const perk=document.createElement('p');perk.textContent='成长福利：20级起自动学习满足等级要求的职业技能，35级学齐当前职业技能。选择怪物后自动释放攻击技能；移动或 Esc 停止。';box.appendChild(perk);const all=me.skills||[],sk=all.find(v=>v.id===selectedSkillId)||all[0];if(!sk)return;selectedSkillId=sk.id;const panel=document.createElement('div');panel.className='skill-book-panel';const close=growthButton('关闭',()=>dialog.close());close.className='panel-close';close.setAttribute('aria-label','关闭技能书');panel.appendChild(close);const scroll=document.createElement('img');scroll.className='skill-scroll';setImage(scroll,'/assets/Items/261.png');scroll.alt='客户端卷轴素材';panel.appendChild(scroll);const tabs=document.createElement('div');tabs.className='skill-tabs';for(const row of all){const b=growthButton(row.name+' · '+(row.rank?'技能 '+row.rank+' 级':'未学习'),()=>{selectedSkillId=row.id;renderGrowth()});b.classList.toggle('selected',row.id===sk.id);tabs.appendChild(b)}panel.appendChild(tabs);const detail=document.createElement('div');detail.className='skill-detail';const title=document.createElement('strong');title.textContent=sk.name+' · '+(sk.rank?'熟练度 '+sk.practice+'/60':'技能书 '+sk.books+' 本');detail.appendChild(title);const info=document.createElement('p');info.textContent='要求 Lv.'+sk.required_level+' · '+(sk.passive?'被动生效':'消耗 '+sk.mp+' MP · '+(sk.range?'距离 '+sk.range:'自身治疗'));detail.appendChild(info);const actions=document.createElement('div');actions.className='actions';actions.appendChild(growthButton('购买技能书 · '+sk.price+' 金币',()=>send('buy_book',{skill_id:sk.id}),!!sk.rank||sk.books>0));actions.appendChild(growthButton('学习',()=>send('learn',{skill_id:sk.id}),!!sk.rank||!sk.books||me.level<sk.required_level));if(sk.rank){actions.appendChild(growthButton(me.training===sk.id?'停止练功':'自动练功',()=>send('train',{skill_id:me.training===sk.id?'':sk.id}),sk.rank>=3));if(!sk.passive)actions.appendChild(growthButton('施放',()=>{dialog.close();castSkill(sk.id)}))}detail.appendChild(actions);panel.appendChild(detail);box.appendChild(panel);const help=document.createElement('p');help.className='skill-book-help';help.textContent='靠近向导、武馆教头或书店可购买与练功。F1–F8 或数字 1–8 施放快捷栏中的主动技能；移动、战斗或离线会停止练功。';box.appendChild(help);return}
  renderCharacter(box);
+}
+// Automation uses the same cast path and server validation as manual input.
+function autoAttackSkill(){
+ const order={warrior:['fire_sword','halfmoon','thrust','assault','lion_roar','shoulder'],wizard:['meteor','ice_storm','thunder','big_fireball','fireball','laser','explosion','hellfire','hell_lightning','fire_wall','repulsion'],taoist:['soul_fireball','poison']}[me?.class]||[];
+ return (me?.skills||[]).filter(s=>s.rank>0&&!s.passive&&s.kind==='damage'&&me.mp>=s.mp).sort((a,b)=>{const rank=s=>{const i=order.indexOf(s.id);return i<0?99:i};return rank(a)-rank(b)})[0]||null;
 }
 function castSkill(id,options={}){
  if(!me||me.dead)return false;
+ if(performance.now()<skillReadyAt){if(!options.autoAttack)status('技能冷却中');return false}
  const sk=me.skills?.find(s=>s.id===id);
  if(!sk?.rank||sk.passive){status('该技能未学习或为被动技能');return false}
  if(me.mp<sk.mp){status('魔法不足');return false}
@@ -591,9 +603,9 @@ function castSkill(id,options={}){
   if(!target&&!options.strictTarget)target=[...monsters.values()].filter(inRange).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];
   if(!target){status('施法范围内没有目标');return false}
  }
- if(options.keepMoving){cancelQuestRoute();pickupTarget=null;destination=null;attackTarget=null;updateTarget()}else stopActions();
+ if(options.autoAttack){cancelQuestRoute();pickupTarget=null;destination=null}else if(options.keepMoving){cancelQuestRoute();pickupTarget=null;destination=null;attackTarget=null;updateTarget()}else stopActions();
  const sent=send('cast',{skill_id:id,target_id:target?.id||0});
- if(!sent)status('连接已断开，请重新进入游戏');
+ if(sent){skillReadyAt=performance.now()+2040;nextInputAt=Math.max(nextInputAt,performance.now()+(me.attack_ms||550)+40);if(typeof updateTouchCooldowns==='function')updateTouchCooldowns()}else status('连接已断开，请重新进入游戏');
  return sent;
 }
 
