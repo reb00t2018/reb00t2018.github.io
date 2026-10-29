@@ -821,7 +821,7 @@ function loadMonsterSound(url){
    try{
     return await Promise.race([
      (async()=>{const r=await nativeFetch(candidate,{signal:control.signal});if(!r.ok)throw Error('sound '+r.status);return soundContext.decodeAudioData(await r.arrayBuffer())})(),
-     new Promise((_,reject)=>{timeout=setTimeout(()=>{control.abort();reject(Error('sound timeout'))},5000)})
+     new Promise((_,reject)=>{timeout=setTimeout(()=>{control.abort();reject(Error('sound timeout'))},20000)})
     ]);
    }catch{}finally{clearTimeout(timeout)}
   }
