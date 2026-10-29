@@ -997,7 +997,8 @@ function renderCharacter(box){
  const interior=document.createElement('div');interior.className='equipment-interior';card.appendChild(interior);
  if(characterTab==='equipment'){
   const doll=document.createElement('div');doll.className='paperdoll';doll.setAttribute('aria-label',classes[me.class]+'当前穿戴');
-  const base=document.createElement('img');base.src=new URL('ui/paperdoll-'+(me.gender==='female'?'female':'male')+'.png',document.baseURI).href;base.className='paperdoll-base';base.alt='';doll.appendChild(base);
+  const base=document.createElement('img'),basePath='ui/paperdoll-'+(me.gender==='female'?'female':'male')+'.png',localBase=new URL(basePath,document.baseURI).href;
+  base.onerror=()=>{base.onerror=null;if(base.src!==localBase)base.src=localBase};base.src=ASSET_CDN?serverURL('/'+basePath):localBase;base.className='paperdoll-base';base.alt='';doll.appendChild(base);
   for(const [slot,layer]of [['armor','armor'],['helmet','helmet'],['weapon','weapon']]){const item=wornInSlot(slot);if(item)addPaperdollLayer(doll,item,layer)}
   interior.appendChild(doll);
   for(const [slot,label,x,y,kind]of equipmentLayout){const item=wornInSlot(slot),b=document.createElement('button');b.className='equipment-slot-button'+(['ring','bracelet','necklace'].includes(kind)?' jewelry-slot':'');b.dataset.slot=slot;b.style.left=x+'px';b.style.top=y+'px';b.classList.toggle('body-equipment-slot',['weapon','armor'].includes(slot));b.classList.toggle('selected',selectedEquipmentSlot===slot);b.classList.toggle('broken',!!item&&item.durability===0);b.setAttribute('aria-label',label+'：'+(item?item.name+' · '+item.description+' · 持久 '+item.durability+'/'+item.max_durability+(item.durability===0?' · 已损坏，属性失效':''):'未佩戴'));b.onmouseenter=()=>showEquipmentTooltip(b,item,label);b.onmouseleave=hideEquipmentTooltip;b.onfocus=()=>showEquipmentTooltip(b,item,label);b.onblur=hideEquipmentTooltip;
