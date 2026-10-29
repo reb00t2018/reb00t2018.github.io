@@ -760,8 +760,14 @@ let soundContext=null,sfxEnabled=localStorage.getItem('legend_sfx')!=='off';cons
 const soundFiles={step:'step.wav',swing:'swing.wav',hit:'hit.wav',death:'death.wav',level:'level.wav'};
 function soundLabel(){$('sfx-btn').textContent=sfxEnabled?'音效：开':'音效：关';$('sfx-btn').setAttribute('aria-pressed',String(sfxEnabled))}soundLabel();
 async function unlockSound(){
- if(!soundContext){soundContext=new AudioContext();for(const [kind,file]of Object.entries(soundFiles)){fetch(`/audio/sfx/${file}`).then(r=>{if(!r.ok)throw Error();return r.arrayBuffer()}).then(b=>soundContext.decodeAudioData(b)).then(b=>soundBuffers.set(kind,b)).catch(()=>{})}}
- if(soundContext.state==='suspended')await soundContext.resume();
+ try{
+  if(!soundContext){
+   const Context=window.AudioContext||window.webkitAudioContext;if(!Context)return;
+   soundContext=new Context();
+   for(const [kind,file]of Object.entries(soundFiles)){fetch(`/audio/sfx/${file}`).then(r=>{if(!r.ok)throw Error();return r.arrayBuffer()}).then(b=>soundContext.decodeAudioData(b)).then(b=>soundBuffers.set(kind,b)).catch(()=>{})}
+  }
+  if(soundContext.state==='suspended')await soundContext.resume();
+ }catch{} // A blocked audio device must not interrupt game input.
 }
 document.addEventListener('pointerdown',unlockSound);document.addEventListener('keydown',unlockSound);
 function playSfx(kind){if(!sfxEnabled||soundContext?.state!=='running'||!soundBuffers.has(kind))return;const source=soundContext.createBufferSource(),gain=soundContext.createGain();source.buffer=soundBuffers.get(kind);gain.gain.value=(kind==='step'?.22:.5)*Number($('sfx-volume').value)/100;source.connect(gain);gain.connect(soundContext.destination);source.start();sfxStats[kind]=(sfxStats[kind]||0)+1}
@@ -801,19 +807,49 @@ $('close-travel').onclick=()=>$('travel-dialog').close();document.querySelectorA
 function updateDrops(rows){groundDrops.clear();for(const d of rows)groundDrops.set(d.id,d);if(pickupTarget&&!groundDrops.has(pickupTarget))pickupTarget=null}
 function choosePickup(id){if(!me||me.dead)return;stopActions();pickupTarget=id;nextInputAt=0;status('前往拾取物品');inputTick()}
 function pickupNearest(){if(!me)return;const d=[...groundDrops.values()].filter(d=>Math.max(Math.abs(d.x-me.x),Math.abs(d.y-me.y))<=10).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];if(d)choosePickup(d.id);else status('附近没有掉落物')}
-const monsterBuffers=new Map(),monsterVoices=new Set(),monsterSoundStats={};
+const monsterBuffers=new Map(),monsterVoices=new Set(),monsterSoundStats={},monsterSoundRetryAt=new Map();
+let monsterPlaybackEpoch=0;
 function loadMonsterSound(url){
  if(!url||!soundContext||!/^\/audio\/monsters\/[0-9]+-[0-9]+\.wav$/.test(url))return Promise.resolve(null);
- if(!monsterBuffers.has(url))monsterBuffers.set(url,fetch(url).catch(()=>fetch(localAssetURL(url))).then(r=>{if(!r.ok)throw Error('sound missing');return r.arrayBuffer()}).then(b=>soundContext.decodeAudioData(b)).catch(()=>null));return monsterBuffers.get(url);
+ if(monsterBuffers.has(url))return monsterBuffers.get(url);
+ if(performance.now()<(monsterSoundRetryAt.get(url)||0))return Promise.resolve(null);
+ // Bypass the CDN fetch rewrite: newly restored client sounds live on the game server.
+ const candidates=[...new Set([serverURL(url),localAssetURL(url)])];
+ const pending=(async()=>{
+  for(const candidate of candidates){
+   const control=new AbortController();let timeout;
+   try{
+    return await Promise.race([
+     (async()=>{const r=await nativeFetch(candidate,{signal:control.signal});if(!r.ok)throw Error('sound '+r.status);return soundContext.decodeAudioData(await r.arrayBuffer())})(),
+     new Promise((_,reject)=>{timeout=setTimeout(()=>{control.abort();reject(Error('sound timeout'))},5000)})
+    ]);
+   }catch{}finally{clearTimeout(timeout)}
+  }
+  throw Error('sound unavailable');
+ })().then(buffer=>{monsterSoundRetryAt.delete(url);return buffer}).catch(()=>{
+  if(monsterBuffers.get(url)===pending)monsterBuffers.delete(url);
+  monsterSoundRetryAt.set(url,performance.now()+2000);return null;
+ });
+ monsterBuffers.set(url,pending);return pending;
 }
 async function playMonsterSound(url,p){
- const epoch=sceneEpoch;if(!me||!sfxEnabled||soundContext?.state!=='running')return;
- const distance=Math.hypot(p.x-me.x,p.y-me.y);if(distance>14||monsterVoices.size>=8)return;
- const buffer=await loadMonsterSound(url);if(!buffer||epoch!==sceneEpoch||!me||!sfxEnabled||monsterVoices.size>=8)return;
- const source=soundContext.createBufferSource(),gain=soundContext.createGain(),pan=soundContext.createStereoPanner();source.buffer=buffer;gain.gain.value=.5*(1-distance/16)*Number($('sfx-volume').value)/100;pan.pan.value=Math.max(-1,Math.min(1,(p.x-me.x)/10));source.connect(gain);gain.connect(pan);pan.connect(soundContext.destination);monsterVoices.add(source);source.onended=()=>{monsterVoices.delete(source);source.disconnect();gain.disconnect();pan.disconnect()};source.start();monsterSoundStats[url]=(monsterSoundStats[url]||0)+1;
+ const epoch=sceneEpoch,generation=monsterPlaybackEpoch,requestedAt=performance.now();
+ const audible=()=>me&&sfxEnabled&&soundContext?.state==='running'&&Number($('sfx-volume').value)>0&&epoch===sceneEpoch&&generation===monsterPlaybackEpoch&&performance.now()-requestedAt<=1500;
+ if(!audible()||!p||!Number.isFinite(p.x)||!Number.isFinite(p.y)||Math.hypot(p.x-me.x,p.y-me.y)>14||monsterVoices.size>=8)return;
+ const buffer=await loadMonsterSound(url);
+ if(!buffer||!audible()||monsterVoices.size>=8)return;
+ const distance=Math.hypot(p.x-me.x,p.y-me.y);if(distance>14)return;
+ try{
+  const source=soundContext.createBufferSource(),gain=soundContext.createGain(),pan=typeof soundContext.createStereoPanner==='function'?soundContext.createStereoPanner():null;
+  source.buffer=buffer;gain.gain.value=.5*(1-distance/16)*Number($('sfx-volume').value)/100;
+  source.connect(gain);if(pan){pan.pan.value=Math.max(-1,Math.min(1,(p.x-me.x)/10));gain.connect(pan);pan.connect(soundContext.destination)}else gain.connect(soundContext.destination);
+  source.onended=()=>{monsterVoices.delete(source);source.disconnect();gain.disconnect();pan?.disconnect()};
+  source.start();monsterVoices.add(source);monsterSoundStats[url]=(monsterSoundStats[url]||0)+1;
+ }catch{} // Stereo panning is optional; audio failures never stop rendering.
 }
-function stopMonsterSounds(){for(const s of monsterVoices){try{s.stop()}catch{}}monsterVoices.clear()}
+function stopMonsterSounds(){monsterPlaybackEpoch++;for(const s of monsterVoices){try{s.stop()}catch{}}monsterVoices.clear()}
 $('sfx-btn').addEventListener('click',()=>{if(!sfxEnabled)stopMonsterSounds()});
+$('sfx-volume').addEventListener('input',()=>{if(Number($('sfx-volume').value)<=0)stopMonsterSounds()});
 
 function canDiscard(item){return !!item&&!item.equipped&&(item.id.startsWith('loot_')||item.slot==='book')}
 const discardButton=document.createElement('button');discardButton.id='discard-item';discardButton.textContent='销毁';$('equip-btn').after(discardButton);
