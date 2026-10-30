@@ -35,7 +35,7 @@ function bindTouchSkill(button,skill){
  button.addEventListener('pointerdown',e=>{
   if(!touchLayout()||e.button>0||touchAim||!me||me.dead||blockingDialog())return;
   e.preventDefault();e.stopPropagation();
-  if(performance.now()<skillReadyAt){status('技能冷却中');return}
+  if(skillCooldownRemaining(skill.id)>0){status('技能冷却中');return}
   if(me.mp<skill.mp){status('魔法不足');return}
   touchAim={pointer:e.pointerId,button,skill,x:e.clientX,y:e.clientY,dx:0,dy:0,dragged:false,cancelled:false,target:null};
   try{button.setPointerCapture(e.pointerId)}catch{}
@@ -56,13 +56,12 @@ function bindTouchSkill(button,skill){
  for(const name of ['pointercancel','lostpointercapture'])button.addEventListener(name,e=>{if(touchAim?.pointer===e.pointerId)cancelTouchAim()});
  button.onclick=e=>{e.preventDefault();if(e.detail===0)castSkill(skill.id)};
 }
-function clearTouchCooldown(){skillReadyAt=0;cancelTouchAim();updateTouchCooldowns()}
+function clearTouchCooldown(){skillReadyAt.clear();skillActionReadyAt=0;cancelTouchAim();updateTouchCooldowns()}
 function updateTouchCooldowns(){
  if(!touchLayout())return;
  if(me?.dead&&touchAim)cancelTouchAim();
- const remain=Math.max(0,skillReadyAt-performance.now());
  for(const button of $('skill-hotbar').querySelectorAll('button')){
-  const skill=me?.skills?.find(s=>s.id===button.dataset.skillId),low=skill&&me.mp<skill.mp;
+  const remain=skillCooldownRemaining(button.dataset.skillId),skill=me?.skills?.find(s=>s.id===button.dataset.skillId),low=skill&&me.mp<skill.mp;
   button.classList.toggle('cooling',remain>0);button.classList.toggle('low-mana',!!low);
   button.setAttribute('aria-disabled',String(remain>0||!!low||!!me?.dead));
   const meta=button.querySelector('small');if(meta&&skill)meta.textContent=remain>0?Math.ceil(remain/1000)+'秒':skill.mp+'蓝';

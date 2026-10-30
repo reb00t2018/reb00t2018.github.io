@@ -47,3 +47,20 @@
  #mobile-utility{bottom:154px}
  #touch-aim-hint:not([hidden]){top:74px}
 }
+
+/* Keep extra skills reachable without covering map feedback with more rows. */
+#skill-pages{position:absolute;left:22px;top:210px;display:flex;align-items:center;gap:8px;z-index:24;font:12px sans-serif;color:#eddaa9}
+#skill-pages button{min-height:30px;padding:4px 10px;background:#18150cee;color:#eddaa9;border:1px solid #8b7549;touch-action:manipulation}
+#skill-pages button:disabled{opacity:.45}
+body:has(#skill-pages:not([hidden])) #party-panel{top:248px}
+@media (max-width:820px), (pointer:coarse) and (max-width:1024px){
+ #mobile-sound{grid-column:1/-1}
+ #skill-pages{position:fixed;left:auto;top:auto;right:max(12px,env(safe-area-inset-right));bottom:calc(max(20px,env(safe-area-inset-bottom)) + 230px);width:226px;justify-content:space-between}
+ #skill-pages button{min-height:32px}
+ body.in-game:has(#skill-pages:not([hidden])) #status{bottom:calc(max(20px,env(safe-area-inset-bottom)) + 270px)!important}
+}
+@media (max-width:350px){#skill-pages{width:210px}}
+@media (max-height:520px) and (orientation:landscape) and (max-width:820px), (max-height:520px) and (orientation:landscape) and (pointer:coarse) and (max-width:1024px){
+ #skill-pages{bottom:230px}
+ body.in-game:has(#skill-pages:not([hidden])) #status{bottom:270px!important;left:max(180px,env(safe-area-inset-left));right:max(250px,env(safe-area-inset-right))}
+}
