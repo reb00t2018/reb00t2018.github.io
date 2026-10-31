@@ -113,6 +113,7 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
   if(m.op==='merchant_stock'){receiveMerchantStock(m.data);return}
   if(m.op==='traded'){merchantPending=false;merchantMessage='交易完成，物品已放入背包。';applyPlayer(m.data);equipPending=false;renderBag();renderServices();renderGrowth();status('交易／使用完成，背包与金币已保存')}
   if(m.op==='repaired'){bagRepairMessage='修理完成，所选物品的持久已恢复。';merchantPending=false;merchantMessage='修理完成，持久已恢复。';applyPlayer(m.data);renderBag();renderServices();renderGrowth();status('修理完成，耐久已恢复，金币已扣除并保存')}
+  if(m.op==='notice'){status(m.data?.message||'');log('系统',m.data?.message||'');return}
   if(m.op==='online'){setOnline(m.data?.count);return}
   if(m.op==='scene')changeScene(m.data);if(m.op==='relocated'){if(me&&m.data.id===me.id){motions.clear();players.delete(me.id);stopActions();me=m.data;regionCache.clear();loadRegion();applyPlayer(m.data,false);hud();status('已到达'+currentScene.name)}}
   if(m.op==='drops')updateDrops(m.data);
@@ -1001,23 +1002,23 @@ function tickQuestRoute(){
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key))cancelQuestRoute()});
 
-// The catalog enumerates shipped resource identity. It never invents floor links.
-let mapCatalog=[],mapCatalogPromise=null,mapCatalogGroup='classic',mapCatalogPage=0;
+// Only configured gameplay scenes are offered by the server catalog.
+let mapCatalog=[],mapCatalogPromise=null,mapCatalogGroup='all',mapCatalogPage=0;
 async function loadMapCatalog(){
  if(!mapCatalog.length){
-  if(!mapCatalogPromise)mapCatalogPromise=fetch('/api/map-catalog').then(r=>{if(!r.ok)throw Error('地图列表加载失败');return r.json()}).then(d=>{mapCatalog=d.maps||[]}).catch(e=>{$('map-catalog-summary').textContent=e.message+'，可重新打开重试。';throw e}).finally(()=>mapCatalogPromise=null);
+  if(!mapCatalogPromise)mapCatalogPromise=fetch('/api/map-catalog').then(r=>{if(!r.ok)throw Error('地图列表加载失败');return r.json()}).then(d=>{mapCatalog=(d.maps||[]).filter(r=>r.playable===true)}).catch(e=>{$('map-catalog-summary').textContent=e.message+'，可重新打开重试。';throw e}).finally(()=>mapCatalogPromise=null);
   try{await mapCatalogPromise}catch{return}
  }
  renderMapCatalog();
 }
 function renderMapCatalog(){
- const q=$('map-catalog-search').value.trim().toLowerCase(),rows=mapCatalog.filter(r=>(mapCatalogGroup==='all'||r.group===mapCatalogGroup)&&(!q||(r.name+' '+r.file).toLowerCase().includes(q))),pages=Math.max(1,Math.ceil(rows.length/20));
- mapCatalogPage=Math.max(0,Math.min(mapCatalogPage,pages-1));$('map-catalog-summary').textContent='原客户端共 '+mapCatalog.length+' 张地图 · 当前分组 '+rows.length+' 张';
+ const q=$('map-catalog-search').value.trim().toLowerCase(),rows=mapCatalog.filter(r=>(mapCatalogGroup==='all'||r.group===mapCatalogGroup)&&(!q||(r.name+' '+(r.area||'')).toLowerCase().includes(q))),pages=Math.max(1,Math.ceil(rows.length/20));
+ mapCatalogPage=Math.max(0,Math.min(mapCatalogPage,pages-1));$('map-catalog-summary').textContent='已开放 '+mapCatalog.length+' 张地图 · 当前分组 '+rows.length+' 张';
  for(const b of document.querySelectorAll('[data-map-group]'))b.setAttribute('aria-pressed',String(b.dataset.mapGroup===mapCatalogGroup));
  const box=$('map-catalog-results');box.replaceChildren();
  for(const r of rows.slice(mapCatalogPage*20,mapCatalogPage*20+20)){
-  const b=document.createElement('button');b.type='button';b.dataset.map=String(r.id);b.textContent=r.name;const small=document.createElement('small');small.textContent=r.file+' · '+r.width+'×'+r.height+(r.recommended_level?' · 推荐 '+r.recommended_level+' 级':'');b.appendChild(small);
-  const need=Number(r.required_level||0);b.disabled=!r.available||(!!need&&me?.level<need)||(me?.map_id===r.id&&r.id!==0);b.title=r.missing_cells?'此原图部分边缘缺损，缺损处无法通行。':r.group==='classic'?r.name:'原图 '+r.file+'，可直接进入探索。';
+  const b=document.createElement('button');b.type='button';b.dataset.map=String(r.id);b.textContent=r.name;const small=document.createElement('small');small.textContent=(r.area||'')+(r.recommended_level?' · 推荐 '+r.recommended_level+' 级':'');b.appendChild(small);
+  const need=Number(r.required_level||0);b.disabled=!r.available||(!!need&&me?.level<need)||(me?.map_id===r.id&&r.id!==0);b.title=need&&me?.level<need?'需要 '+need+' 级':r.name;
   b.onclick=()=>{if(!me||me.dead)return;stopActions();if(send('travel',{map_id:r.id})){$('travel-dialog').close();status('正在前往 '+r.name)}};box.appendChild(b);
  }
  if(!rows.length)box.textContent='未找到匹配地图。';
