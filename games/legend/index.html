@@ -50,6 +50,7 @@
 #inventory-dialog{z-index:40}
 .jewelry-slot.broken{border-color:#ff5252}.jewelry-slot.broken img{filter:grayscale(1);opacity:.5}
 #login-dialog{width:440px}#login-tabs{display:flex;gap:8px;margin-bottom:16px}#login-tabs button{flex:1;padding:7px 10px}#login-tabs button.active{background:#5e4526;border-color:#d0a65d;color:#ffe7b0}.login-pane label{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.login-pane input{width:100%}#invite-code{font:16px ui-monospace,monospace;letter-spacing:2px;text-transform:uppercase}.login-error{min-height:1.2em;color:#ff9d8a;font:12px sans-serif}.invite-copy{font:12px/1.7 sans-serif;color:#bda98a;margin:8px 0}#online-count{position:absolute;right:24px;top:76px;z-index:6;background:#100e0bd9;border:1px solid #65523a;padding:4px 9px;font:12px sans-serif;color:#cfe3ad;text-shadow:0 1px 2px #000}@media(max-width:800px){#online-count{top:125px;right:8px;font-size:11px}}
+#map-catalog-tabs{margin:12px 0;gap:6px}#map-catalog-tabs button[aria-pressed=true]{background:#755b2e;color:#fff1bf}#map-catalog-search{width:100%;padding:9px;margin:5px 0 12px;background:#181611;border:1px solid #81704a;color:#f2e3bf;font-size:14px}#map-catalog-results{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:42dvh;overflow:auto}#map-catalog-results button{text-align:left;overflow-wrap:anywhere;min-height:48px;white-space:normal}#map-catalog-results small{display:block;opacity:.75;font-size:10px}#map-catalog-summary,#map-catalog-note{font:12px/1.6 sans-serif}#map-catalog-page{align-self:center}#travel-dialog #close-travel{margin-top:12px}
 </style>
 <style>
 /* Prguse 1 places the role and skill controls around x655 and x735. */
@@ -90,14 +91,13 @@
 <button id="travel-btn" title="在出生地附近切换地图">传送</button><button id="character-hud-btn" class="classic-orb-button" aria-label="人物属性 C" title="人物属性 C"></button><button id="skills-hud-btn" class="classic-orb-button" aria-label="职业技能 K" title="职业技能 K"></button>
 </div></div>
 <dialog id="death-dialog"><h2>你已倒下</h2><p>回到村中恢复生命与魔法，等级和装备会保留。</p><button id="revive-btn">回村复活</button></dialog>
-<dialog id="travel-dialog"><h2>选择目的地</h2><p>选择地图可直接进入。走到地面入口也会自动切图，层间可沿出口返回。灰色选项表示等级不足。</p>
-<div class="travel-group"><strong>主城</strong><div class="travel-grid"><button data-map="0">比奇城中心</button><button data-map="3">盟重土城</button><button data-map="1">沃玛森林</button><button data-waypoint="village">银杏村口</button></div></div>
-<div class="travel-group"><strong>毒蛇山谷</strong><div class="travel-grid"><button data-map="2" data-min-level="24">毒蛇山谷 · 24</button><button data-map="251" data-min-level="24">毒蛇矿区一层 · 24</button><button data-map="252" data-min-level="26">毒蛇矿区二层 · 26</button></div></div>
-<div class="travel-group"><strong>沃玛寺庙</strong><div class="travel-grid"><button data-map="301" data-min-level="24">沃玛寺庙一层 · 24</button><button data-map="302" data-min-level="27">沃玛寺庙二层 · 27</button><button data-map="303" data-min-level="30">沃玛寺庙三层 · 30</button></div></div>
-<div class="travel-group"><strong>赤月峡谷</strong><div class="travel-grid"><button data-map="311" data-min-level="30">赤月峡谷入口 · 30</button><button data-map="312" data-min-level="33">赤月峡谷 · 33</button></div></div>
-<div class="travel-group"><strong>封魔谷</strong><div class="travel-grid"><button data-map="321" data-min-level="28">封魔谷 · 28</button><button data-map="322" data-min-level="30">封魔矿区 · 30</button><button data-map="323" data-min-level="32">封魔殿 · 32</button></div></div>
-<div class="travel-group"><strong>经典地图补全</strong><div class="travel-grid"><button data-map="100" data-min-level="1">经典室内 0100</button><button data-map="101" data-min-level="1">经典室内 0101</button><button data-map="104" data-min-level="1">经典室内 0104</button><button data-map="105" data-min-level="1">经典室内 0105</button><button data-map="106" data-min-level="1">经典室内 0106</button><button data-map="107" data-min-level="1">经典室内 0107</button><button data-map="255" data-min-level="24">毒蛇矿区·旧一层</button><button data-map="256" data-min-level="26">毒蛇矿区·旧二层</button><button data-map="313" data-min-level="33">赤月峡谷·旧道一</button><button data-map="314" data-min-level="35">赤月峡谷·旧道二</button><button data-map="342" data-min-level="32">死亡山谷·旧道</button><button data-map="324" data-min-level="30">封魔矿区·旧道</button><button data-map="325" data-min-level="28">封魔谷·旧道</button><button data-map="326" data-min-level="30">封魔矿区·旧矿</button><button data-map="327" data-min-level="32">封魔殿·旧殿</button><button data-map="332" data-min-level="24">石墓·旧一层</button><button data-map="352" data-min-level="35">一线天·旧道</button></div></div><div class="travel-group"><strong>高等级地宫</strong><div class="travel-grid"><button data-map="331" data-min-level="24">石墓一层 · 24</button><button data-map="341" data-min-level="32">死亡山谷·地牢一层东 · 32</button><button data-map="351" data-min-level="35">一线天 · 35</button><button data-map="201">兽人古墓</button><button data-map="241">比奇僵尸洞</button></div></div>
-<button id="close-travel">取消</button></dialog>
+<dialog id="travel-dialog"><h2>地图传送</h2><p id="map-catalog-summary">正在读取地图…</p>
+<div class="travel-grid"><button data-map="0">比奇城中心</button><button data-waypoint="village">银杏村口</button><button data-map="3">盟重土城</button></div>
+<div id="map-catalog-tabs" class="travel-grid"><button data-map-group="classic">经典地图</button><button data-map-group="later">后续版本</button><button data-map-group="client">其他原图</button><button data-map-group="all">全部</button></div>
+<label for="map-catalog-search">查找地图</label><input id="map-catalog-search" type="search" placeholder="地图名称或原图编号" autocomplete="off">
+<div id="map-catalog-results" class="travel-grid"></div><p id="map-catalog-note">未核实原名的地图保留客户端编号；未知原服出口暂不猜测连接。</p>
+<div class="travel-grid"><button id="map-catalog-prev">上一页</button><span id="map-catalog-page"></span><button id="map-catalog-next">下一页</button></div>
+<button id="close-travel">返回游戏</button></dialog>
 <dialog id="map-dialog"><header><h2>地图与 NPC</h2><button id="close-map">×</button></header><div class="map-tools"><button id="map-all">全图</button><button id="map-near">当前位置</button><span id="map-position"></span></div><div class="map-layout"><canvas id="large-map" width="400" height="300"></canvas><div id="map-npcs"></div></div><p id="map-selection">白点：你 · 绿点：NPC · 红点：怪物（含鸡鹿）</p></dialog><dialog id="growth-dialog"><header><h2 id="growth-title"></h2><button id="close-growth" aria-label="关闭成长面板">×</button></header><div id="growth-content"></div><p id="growth-feedback" role="status"></p></dialog><style>/* Client frame + original paper-doll layers, arranged like the supplied equipment reference. */
 #growth-dialog.classic-character{top:50%;left:50%;width:max-content;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);padding:0;overflow:visible;background:none}
 #growth-dialog.classic-character #growth-feedback{display:none}.equipment-shell{position:relative}.equipment-card{position:absolute;left:0;top:0;width:264px;height:362px;transform-origin:top left;background:url('assets/Prguse/800.png') 32px 0/232px 362px no-repeat;image-rendering:pixelated;color:#e7d7ad;font:10px/1.4 'Songti SC',serif}
@@ -399,13 +399,14 @@ const serverURL=p=>SERVER&&typeof p==='string'&&p.startsWith('/')?SERVER+p:p;
 const localAssetURL=p=>ASSET_BASE&&typeof p==='string'&&p.startsWith('/')?ASSET_BASE+p:p;
 const assetURL=p=>{
  if(typeof p!=='string'||!p.startsWith('/'))return p;
+ if(currentScene?.resource_map&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p))return serverURL(p);
  // Corrected dungeon tiles are mirrored on the game server; Pages remains the fallback.
  if(ASSET_CDN&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p)&&currentScene?.map_binding_version>=2)return serverURL('/map-assets/'+p.slice('/assets/'.length));
  if(ASSET_CDN&&/^\/assets\/(?:Weapon|Hum|Items|stateitem)\//.test(p))return serverURL('/map-assets/'+p.slice('/assets/'.length));
  if(ASSET_CDN)return ASSET_CDN+p;
  return localAssetURL(p);
 };
-const imageURL=p=>ASSET_WEBP?assetURL(p).replace(/\.png$/,'.webp'):assetURL(p);
+const imageURL=p=>ASSET_WEBP&&!(currentScene?.resource_map&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p))?assetURL(p).replace(/\.png$/,'.webp'):assetURL(p);
 function setImage(im,path,onerror){
  const local=ASSET_WEBP?localAssetURL(path).replace(/\.png$/,'.webp'):localAssetURL(path);let fallback=false;
  im.onerror=()=>{if(ASSET_CDN&&!fallback&&im.src!==new URL(local,location.href).href){fallback=true;im.src=local;return}if(onerror)onerror(Error('图片读取失败'));else status('图片读取失败，请稍后重试')};
@@ -578,6 +579,7 @@ async function loadRegion(force=false){
 
 const libMeta=new Map();let dungeonMetaPromise=null;
 function metaFor(lib){
+ if(currentScene?.resource_map&&/^(?:Tiles\d*|SmTiles\d*|Objects\d*)$/.test(lib))return Promise.resolve({});
  if(ASSET_WEBP&&currentScene?.map_binding_version>=2&&/^(?:Tiles\d*|SmTiles\d*|Objects\d*)$/.test(lib)){
   if(!dungeonMetaPromise){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);dungeonMetaPromise=fetch('/api/map-assets.json',{signal:controller.signal}).then(r=>{if(!r.ok)throw Error('map metadata missing');return r.json()}).finally(()=>clearTimeout(timer)).catch(error=>{dungeonMetaPromise=null;throw error})}
   return dungeonMetaPromise.then(m=>m[lib]||{});
@@ -857,7 +859,7 @@ function changeScene(scene){
 }
 function updateMapMusic(){if(!me)return;const city=me.map_id===0&&Math.abs(me.x-343)+Math.abs(me.y-245)<=145;const town=me.map_id===3;const room=[102,103,108,109].includes(me.map_id);setMusic(city||town||room?null:('music' in currentScene?currentScene.music:'/audio/field2.wav'))}
 $('death-dialog').oncancel=e=>e.preventDefault();$('revive-btn').onclick=()=>send('revive');
-$('travel-btn').onclick=()=>{if(!me||me.dead)return;stopActions();for(const b of document.querySelectorAll('[data-map]')){const need=Number(b.dataset.minLevel||0);b.disabled=(Number(b.dataset.map)===me.map_id&&me.map_id!==0)||(!!need&&me.level<need);b.title=need&&me.level<need?'需要 '+need+' 级':''}$('travel-dialog').showModal()};
+$('travel-btn').onclick=()=>{if(!me||me.dead)return;stopActions();for(const b of document.querySelectorAll('[data-map]')){const need=Number(b.dataset.minLevel||0);b.disabled=(Number(b.dataset.map)===me.map_id&&me.map_id!==0)||(!!need&&me.level<need);b.title=need&&me.level<need?'需要 '+need+' 级':''}$('travel-dialog').showModal();loadMapCatalog()};
 $('close-travel').onclick=()=>$('travel-dialog').close();document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{const need=Number(b.dataset.minLevel||0);if(need&&me&&me.level<need){status('需要 '+need+' 级才能进入');return}if(send('travel',{map_id:Number(b.dataset.map)})){$('travel-dialog').close();status('正在传送…')}});
 
 function updateDrops(rows){groundDrops.clear();for(const d of rows)groundDrops.set(d.id,d);if(pickupTarget&&!groundDrops.has(pickupTarget))pickupTarget=null}
@@ -1371,6 +1373,32 @@ function tickQuestRoute(){
 }
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key))cancelQuestRoute()});
+
+// The catalog enumerates shipped resource identity. It never invents floor links.
+let mapCatalog=[],mapCatalogPromise=null,mapCatalogGroup='classic',mapCatalogPage=0;
+async function loadMapCatalog(){
+ if(!mapCatalog.length){
+  if(!mapCatalogPromise)mapCatalogPromise=fetch('/api/map-catalog').then(r=>{if(!r.ok)throw Error('地图列表加载失败');return r.json()}).then(d=>{mapCatalog=d.maps||[]}).catch(e=>{$('map-catalog-summary').textContent=e.message+'，可重新打开重试。';throw e}).finally(()=>mapCatalogPromise=null);
+  try{await mapCatalogPromise}catch{return}
+ }
+ renderMapCatalog();
+}
+function renderMapCatalog(){
+ const q=$('map-catalog-search').value.trim().toLowerCase(),rows=mapCatalog.filter(r=>(mapCatalogGroup==='all'||r.group===mapCatalogGroup)&&(!q||(r.name+' '+r.file).toLowerCase().includes(q))),pages=Math.max(1,Math.ceil(rows.length/20));
+ mapCatalogPage=Math.max(0,Math.min(mapCatalogPage,pages-1));$('map-catalog-summary').textContent='原客户端共 '+mapCatalog.length+' 张地图 · 当前分组 '+rows.length+' 张';
+ for(const b of document.querySelectorAll('[data-map-group]'))b.setAttribute('aria-pressed',String(b.dataset.mapGroup===mapCatalogGroup));
+ const box=$('map-catalog-results');box.replaceChildren();
+ for(const r of rows.slice(mapCatalogPage*20,mapCatalogPage*20+20)){
+  const b=document.createElement('button');b.type='button';b.dataset.map=String(r.id);b.textContent=r.name;const small=document.createElement('small');small.textContent=r.file+' · '+r.width+'×'+r.height+(r.recommended_level?' · 推荐 '+r.recommended_level+' 级':'');b.appendChild(small);
+  const need=Number(r.required_level||0);b.disabled=!r.available||(!!need&&me?.level<need)||(me?.map_id===r.id&&r.id!==0);b.title=r.note||'';
+  b.onclick=()=>{if(!me||me.dead)return;$('map-catalog-note').textContent=r.note||'';stopActions();if(send('travel',{map_id:r.id})){$('travel-dialog').close();status('正在前往 '+r.name)}};box.appendChild(b);
+ }
+ if(!rows.length)box.textContent='未找到匹配地图。';
+ $('map-catalog-page').textContent=(mapCatalogPage+1)+' / '+pages;$('map-catalog-prev').disabled=mapCatalogPage===0;$('map-catalog-next').disabled=mapCatalogPage+1>=pages;
+}
+for(const b of document.querySelectorAll('[data-map-group]'))b.onclick=()=>{mapCatalogGroup=b.dataset.mapGroup;mapCatalogPage=0;renderMapCatalog()};
+$('map-catalog-search').oninput=()=>{mapCatalogPage=0;renderMapCatalog()};
+$('map-catalog-prev').onclick=()=>{mapCatalogPage--;renderMapCatalog()};$('map-catalog-next').onclick=()=>{mapCatalogPage++;renderMapCatalog()};
 
 </script><script>
 // Touch targeting is a client aid; the server still validates every cast.

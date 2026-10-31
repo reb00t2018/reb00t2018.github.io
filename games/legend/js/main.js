@@ -8,13 +8,14 @@ const serverURL=p=>SERVER&&typeof p==='string'&&p.startsWith('/')?SERVER+p:p;
 const localAssetURL=p=>ASSET_BASE&&typeof p==='string'&&p.startsWith('/')?ASSET_BASE+p:p;
 const assetURL=p=>{
  if(typeof p!=='string'||!p.startsWith('/'))return p;
+ if(currentScene?.resource_map&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p))return serverURL(p);
  // Corrected dungeon tiles are mirrored on the game server; Pages remains the fallback.
  if(ASSET_CDN&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p)&&currentScene?.map_binding_version>=2)return serverURL('/map-assets/'+p.slice('/assets/'.length));
  if(ASSET_CDN&&/^\/assets\/(?:Weapon|Hum|Items|stateitem)\//.test(p))return serverURL('/map-assets/'+p.slice('/assets/'.length));
  if(ASSET_CDN)return ASSET_CDN+p;
  return localAssetURL(p);
 };
-const imageURL=p=>ASSET_WEBP?assetURL(p).replace(/\.png$/,'.webp'):assetURL(p);
+const imageURL=p=>ASSET_WEBP&&!(currentScene?.resource_map&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p))?assetURL(p).replace(/\.png$/,'.webp'):assetURL(p);
 function setImage(im,path,onerror){
  const local=ASSET_WEBP?localAssetURL(path).replace(/\.png$/,'.webp'):localAssetURL(path);let fallback=false;
  im.onerror=()=>{if(ASSET_CDN&&!fallback&&im.src!==new URL(local,location.href).href){fallback=true;im.src=local;return}if(onerror)onerror(Error('图片读取失败'));else status('图片读取失败，请稍后重试')};
@@ -187,6 +188,7 @@ async function loadRegion(force=false){
 
 const libMeta=new Map();let dungeonMetaPromise=null;
 function metaFor(lib){
+ if(currentScene?.resource_map&&/^(?:Tiles\d*|SmTiles\d*|Objects\d*)$/.test(lib))return Promise.resolve({});
  if(ASSET_WEBP&&currentScene?.map_binding_version>=2&&/^(?:Tiles\d*|SmTiles\d*|Objects\d*)$/.test(lib)){
   if(!dungeonMetaPromise){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);dungeonMetaPromise=fetch('/api/map-assets.json',{signal:controller.signal}).then(r=>{if(!r.ok)throw Error('map metadata missing');return r.json()}).finally(()=>clearTimeout(timer)).catch(error=>{dungeonMetaPromise=null;throw error})}
   return dungeonMetaPromise.then(m=>m[lib]||{});
@@ -466,7 +468,7 @@ function changeScene(scene){
 }
 function updateMapMusic(){if(!me)return;const city=me.map_id===0&&Math.abs(me.x-343)+Math.abs(me.y-245)<=145;const town=me.map_id===3;const room=[102,103,108,109].includes(me.map_id);setMusic(city||town||room?null:('music' in currentScene?currentScene.music:'/audio/field2.wav'))}
 $('death-dialog').oncancel=e=>e.preventDefault();$('revive-btn').onclick=()=>send('revive');
-$('travel-btn').onclick=()=>{if(!me||me.dead)return;stopActions();for(const b of document.querySelectorAll('[data-map]')){const need=Number(b.dataset.minLevel||0);b.disabled=(Number(b.dataset.map)===me.map_id&&me.map_id!==0)||(!!need&&me.level<need);b.title=need&&me.level<need?'需要 '+need+' 级':''}$('travel-dialog').showModal()};
+$('travel-btn').onclick=()=>{if(!me||me.dead)return;stopActions();for(const b of document.querySelectorAll('[data-map]')){const need=Number(b.dataset.minLevel||0);b.disabled=(Number(b.dataset.map)===me.map_id&&me.map_id!==0)||(!!need&&me.level<need);b.title=need&&me.level<need?'需要 '+need+' 级':''}$('travel-dialog').showModal();loadMapCatalog()};
 $('close-travel').onclick=()=>$('travel-dialog').close();document.querySelectorAll('[data-map]').forEach(b=>b.onclick=()=>{const need=Number(b.dataset.minLevel||0);if(need&&me&&me.level<need){status('需要 '+need+' 级才能进入');return}if(send('travel',{map_id:Number(b.dataset.map)})){$('travel-dialog').close();status('正在传送…')}});
 
 function updateDrops(rows){groundDrops.clear();for(const d of rows)groundDrops.set(d.id,d);if(pickupTarget&&!groundDrops.has(pickupTarget))pickupTarget=null}
@@ -980,3 +982,29 @@ function tickQuestRoute(){
 }
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(e.key))cancelQuestRoute()});
+
+// The catalog enumerates shipped resource identity. It never invents floor links.
+let mapCatalog=[],mapCatalogPromise=null,mapCatalogGroup='classic',mapCatalogPage=0;
+async function loadMapCatalog(){
+ if(!mapCatalog.length){
+  if(!mapCatalogPromise)mapCatalogPromise=fetch('/api/map-catalog').then(r=>{if(!r.ok)throw Error('地图列表加载失败');return r.json()}).then(d=>{mapCatalog=d.maps||[]}).catch(e=>{$('map-catalog-summary').textContent=e.message+'，可重新打开重试。';throw e}).finally(()=>mapCatalogPromise=null);
+  try{await mapCatalogPromise}catch{return}
+ }
+ renderMapCatalog();
+}
+function renderMapCatalog(){
+ const q=$('map-catalog-search').value.trim().toLowerCase(),rows=mapCatalog.filter(r=>(mapCatalogGroup==='all'||r.group===mapCatalogGroup)&&(!q||(r.name+' '+r.file).toLowerCase().includes(q))),pages=Math.max(1,Math.ceil(rows.length/20));
+ mapCatalogPage=Math.max(0,Math.min(mapCatalogPage,pages-1));$('map-catalog-summary').textContent='原客户端共 '+mapCatalog.length+' 张地图 · 当前分组 '+rows.length+' 张';
+ for(const b of document.querySelectorAll('[data-map-group]'))b.setAttribute('aria-pressed',String(b.dataset.mapGroup===mapCatalogGroup));
+ const box=$('map-catalog-results');box.replaceChildren();
+ for(const r of rows.slice(mapCatalogPage*20,mapCatalogPage*20+20)){
+  const b=document.createElement('button');b.type='button';b.dataset.map=String(r.id);b.textContent=r.name;const small=document.createElement('small');small.textContent=r.file+' · '+r.width+'×'+r.height+(r.recommended_level?' · 推荐 '+r.recommended_level+' 级':'');b.appendChild(small);
+  const need=Number(r.required_level||0);b.disabled=!r.available||(!!need&&me?.level<need)||(me?.map_id===r.id&&r.id!==0);b.title=r.note||'';
+  b.onclick=()=>{if(!me||me.dead)return;$('map-catalog-note').textContent=r.note||'';stopActions();if(send('travel',{map_id:r.id})){$('travel-dialog').close();status('正在前往 '+r.name)}};box.appendChild(b);
+ }
+ if(!rows.length)box.textContent='未找到匹配地图。';
+ $('map-catalog-page').textContent=(mapCatalogPage+1)+' / '+pages;$('map-catalog-prev').disabled=mapCatalogPage===0;$('map-catalog-next').disabled=mapCatalogPage+1>=pages;
+}
+for(const b of document.querySelectorAll('[data-map-group]'))b.onclick=()=>{mapCatalogGroup=b.dataset.mapGroup;mapCatalogPage=0;renderMapCatalog()};
+$('map-catalog-search').oninput=()=>{mapCatalogPage=0;renderMapCatalog()};
+$('map-catalog-prev').onclick=()=>{mapCatalogPage--;renderMapCatalog()};$('map-catalog-next').onclick=()=>{mapCatalogPage++;renderMapCatalog()};
