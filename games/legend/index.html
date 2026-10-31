@@ -500,6 +500,7 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
   if(m.op==='trade_done'){tradeState=null;applyPlayer(m.data.player);equipPending=false;renderBag();$('trade-dialog').close();status(m.data.message||'交易完成');return}
   if(m.op==='trade_cancelled'){tradeState=null;$('trade-dialog').close();status(m.data.message||'交易已取消');return}
   if(m.op==='portals'){portals=m.data||[];updateGate()}
+  if(m.op==='merchant_stock'){receiveMerchantStock(m.data);return}
   if(m.op==='traded'){merchantPending=false;merchantMessage='交易完成，物品已放入背包。';applyPlayer(m.data);equipPending=false;renderBag();renderServices();renderGrowth();status('交易／使用完成，背包与金币已保存')}
   if(m.op==='repaired'){bagRepairMessage='修理完成，所选物品的持久已恢复。';merchantPending=false;merchantMessage='修理完成，持久已恢复。';applyPlayer(m.data);renderBag();renderServices();renderGrowth();status('修理完成，耐久已恢复，金币已扣除并保存')}
   if(m.op==='online'){setOnline(m.data?.count);return}
@@ -1005,6 +1006,13 @@ function updateGate(){const g=nearestGate();$('enter-gate').hidden=!g;if(g)$('en
 function enterGate(){const g=nearestGate();if(g){stopActions();send('gate',{gate_id:g.id})}}
 $('enter-gate').onclick=enterGate;
 function merchantRows(){return activeNPC?.products||[]}
+function receiveMerchantStock(d){
+ if(!me||!activeNPC||d.id!==activeNPC.id||(d.map_id!=null&&d.map_id!==me.map_id))return;
+ activeNPC.products=d.products||[];
+ if(merchantSelected&&!merchantRows().some(p=>p.id===merchantSelected))merchantSelected='';
+ renderServices();
+}
+setInterval(()=>{if(me&&!me.dead&&activeNPC&&$('npc-dialog').open&&!merchantPending)send('shop_stock',{npc_id:activeNPC.id})},5000);
 function merchantBlockReason(p){
  if(merchantPending)return '正在交易，请稍候。';
  if(!p)return '请先选择要购买的物品。';
