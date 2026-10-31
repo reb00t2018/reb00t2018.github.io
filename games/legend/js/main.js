@@ -101,6 +101,10 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
  ws.onclose=()=>{cancelQuestRoute();setMusic('/audio/main_theme.wav');stopMonsterSounds();me=null;$('classic-hud').hidden=true;document.body.classList.remove('in-game');resetControls();chatOpen=false;$('chat-input').value='';$('chat-input').blur();$('chat').replaceChildren();chatBubbles.clear();players.clear();npcs=[];for(const d of document.querySelectorAll('dialog[open]'))d.close();$('game-actions').hidden=true;$('game-screen').style.display='none';$('login-screen').style.display='grid';$('stage').classList.add('select');equipPending=false;loadRoles();status('已返回选角，可以选择角色再次进入')};
  ws.onerror=()=>status('连接失败，请检查服务是否运行');ws.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}
   if(m.op==='growth'){const old=me;merchantPending=false;applyPlayer(m.data);if(m.data.id===me?.id){equipPending=false;renderGrowth();if($('inventory-dialog').open)renderBag();if($('npc-dialog').open)renderServices();if(old&&m.data.hp>old.hp)damageLabels.push({x:m.data.x,y:m.data.y,text:'+'+(m.data.hp-old.hp),start:performance.now(),color:'#8cffa6'});$('growth-feedback').textContent='角色成长已保存'}}
+  if(m.op==='trade_invite'){if(confirm(m.data.from+' 想和你交易，接受吗？'))send('trade_accept');return}
+  if(m.op==='trade'){tradeState=m.data;renderTrade();if(!$('trade-dialog').open)$('trade-dialog').showModal();return}
+  if(m.op==='trade_done'){tradeState=null;applyPlayer(m.data.player);equipPending=false;renderBag();$('trade-dialog').close();status(m.data.message||'交易完成');return}
+  if(m.op==='trade_cancelled'){tradeState=null;$('trade-dialog').close();status(m.data.message||'交易已取消');return}
   if(m.op==='portals'){portals=m.data||[];updateGate()}
   if(m.op==='traded'){merchantPending=false;merchantMessage='交易完成，物品已放入背包。';applyPlayer(m.data);equipPending=false;renderBag();renderServices();renderGrowth();status('交易／使用完成，背包与金币已保存')}
   if(m.op==='repaired'){bagRepairMessage='修理完成，所选物品的持久已恢复。';merchantPending=false;merchantMessage='修理完成，持久已恢复。';applyPlayer(m.data);renderBag();renderServices();renderGrowth();status('修理完成，耐久已恢复，金币已扣除并保存')}
@@ -561,12 +565,13 @@ function updateLocation(){
 
 document.querySelectorAll('[data-waypoint]').forEach(b=>b.onclick=()=>{if(send('travel',{map_id:0,destination:b.dataset.waypoint}))$('travel-dialog').close()});
 
-const mapImages=new Map();let mapFocus=null,mapWhole=true,mapSelected=null;
+const mapImages=new Map();let mapFocus=null,mapWhole=true,mapSelected=null,mapView=null;
 function overviewImage(){if(!me)return null;const id=me.map_id;if(!mapImages.has(id)){const im=new Image();im.src=serverURL('/api/minimap.png?map_id='+id);mapImages.set(id,im)}return mapImages.get(id)}
 function drawOverview(canvas,small){if(!me)return;const im=overviewImage(),c=canvas.getContext('2d'),rect=canvas.getBoundingClientRect(),width=rect.width||canvas.width,height=rect.height||canvas.height,density=Math.min(3,Math.max(1,window.devicePixelRatio||1)),bw=Math.round(width*density),bh=Math.round(height*density);if(canvas.width!==bw||canvas.height!==bh){canvas.width=bw;canvas.height=bh}c.setTransform(canvas.width/width,0,0,canvas.height/height,0,0);c.fillStyle='#11150e';c.fillRect(0,0,width,height);if(!im?.complete||!im.naturalWidth)return;
  const whole=!small&&mapWhole,focus=small?me:(mapFocus||me),sw=whole?im.naturalWidth:(small?80:140),sh=whole?im.naturalHeight:sw*1.5*height/width;
  const left=whole?0:focus.x-sw/2,top=whole?0:focus.y-sh/2;
  const scale=Math.min(width/(sw*1.5),height/sh),dw=sw*1.5*scale,dh=sh*scale,ox=(width-dw)/2,oy=(height-dh)/2;
+ if(!small)mapView={left,top,sw,sh,ox,oy,dw,dh};
  c.imageSmoothingEnabled=false;c.drawImage(im,left,top,sw,sh,ox,oy,dw,dh);
  const point=(p,color,size)=>{const x=ox+(p.x-left)/sw*dw,y=oy+(p.y-top)/sh*dh;if(x<0||y<0||x>width||y>height)return;c.fillStyle=color;c.strokeStyle='#10100a';c.beginPath();c.arc(x,y,size,0,Math.PI*2);c.fill();c.stroke();return {x,y}};
  for(const m of monsters.values())if(m.hp>0)point(m,'#ff3838',small?2.5:3);
@@ -574,6 +579,28 @@ function drawOverview(canvas,small){if(!me)return;const im=overviewImage(),c=can
  for(const n of npcs){const p=point(n,n.id===mapSelected?'#f8e899':'#9bd47c',small?2:3);if(p&&!small&&n.id===mapSelected){c.font='14px sans-serif';c.textAlign='center';c.fillStyle='#fff0bd';c.fillText(n.name,p.x,p.y-10)}}
  const p=Math.floor(performance.now()/400)%2===0?point(me,'#ffffff',small?3:4):null;if(p){c.strokeStyle='#ffffff';c.strokeRect(p.x-6,p.y-6,12,12)}
 }
+async function startMapRoute(x,y){
+ if(!me||me.dead||!mapView)return;stopActions();const token=++questRequest,ownerID=me.id,mapID=me.map_id,control=new AbortController();questController=control;
+ $('map-dialog').close();$('cancel-route').hidden=false;status('正在前往坐标 '+x+', '+y+'…');
+ try{
+  if(!await loadRegion(true))throw Error('地图暂时不可用，请稍后重试');if(token!==questRequest||me?.id!==ownerID||me.map_id!==mapID)return;
+  await loadRouteCells({x,y},mapID,control,()=>token===questRequest&&me?.id===ownerID&&me.map_id===mapID);
+  if(token!==questRequest||me?.id!==ownerID||me.map_id!==mapID)return;
+  const path=questPath({x,y});if(!path)throw Error('该坐标附近没有可通行路线');
+  if(!path.length){cancelQuestRoute();status('已经到达目标坐标');return}
+  questRoute={path,target:{x,y},kind:'cell',map:mapID,failures:0};status('正在前往坐标 '+x+', '+y+'，方向键或停止按钮可取消');
+ }catch(e){if(token===questRequest){cancelQuestRoute();status(e.message)}}
+}
+function mapClick(e){
+ if(!me||!mapView)return;const canvas=$('large-map'),rect=canvas.getBoundingClientRect();
+ if(!rect.width||!rect.height)return;const px=(e.clientX-rect.left)/rect.width*rect.width,py=(e.clientY-rect.top)/rect.height*rect.height;
+ const x=Math.floor(mapView.left+(px-mapView.ox)/mapView.dw*mapView.sw),y=Math.floor(mapView.top+(py-mapView.oy)/mapView.dh*mapView.sh);
+ if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0)return;
+ mapSelected=null;mapFocus={x,y};mapWhole=false;
+ $('map-selection').textContent='目标坐标 '+x+', '+y+' · 自动寻路';
+ drawOverview(canvas,false);startMapRoute(x,y);
+}
+$('large-map').onclick=mapClick;
 function mapList(){if(!me)return;const box=$('map-npcs');box.replaceChildren();for(const n of [...npcs,...portals].sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))){const b=document.createElement('button');b.textContent=n.name+' ('+n.x+','+n.y+')';b.classList.toggle('active',n.id===mapSelected);b.onclick=()=>{mapFocus=n;mapSelected=n.id;mapWhole=false;$('map-selection').textContent=n.name+' · 坐标 '+n.x+', '+n.y;mapList();drawOverview($('large-map'),false)};box.appendChild(b)}}
 function openMap(){if(!me)return;stopActions();mapFocus=null;mapSelected=null;mapWhole=true;$('map-selection').textContent='白点：你 · 绿点：NPC · 红点：怪物（含鸡鹿）';mapList();if(!$('map-dialog').open)$('map-dialog').showModal();drawOverview($('large-map'),false)}
 $('minimap-toggle').onclick=openMap;$('close-map').onclick=()=>$('map-dialog').close();$('map-all').onclick=()=>{mapWhole=true;mapFocus=null};$('map-near').onclick=()=>{mapWhole=false;mapFocus=null;mapSelected=null;mapList()};
@@ -642,7 +669,7 @@ function renderSkillPages(count){
 }
 function growthHUD(){if(!me)return;const q=me.journey;$('quest-tracker').textContent=q?('主线 · '+q.title+'\n'+(q.target?q.kills+' / '+q.target+' · ':'')+(q.ready?'可交付 · 点击查看':q.completed?'主线已完成':'点击查看目标与奖励')):'';$('stop-training').hidden=!me.training;$('stop-training').textContent=me.training?'练功中 · 停止':'停止练功';const box=$('skill-hotbar');const touch=matchMedia('(max-width:820px), (pointer:coarse) and (max-width:1024px)').matches;const allSkills=activeSkills(),pageCount=Math.max(1,Math.ceil(allSkills.length/8));skillHotbarPage=Math.min(skillHotbarPage,pageCount-1);const skills=allSkills.slice(skillHotbarPage*8,skillHotbarPage*8+8);renderSkillPages(pageCount);syncSkillCollapse();const sig=(touch?'t':'d')+'|'+skillHotbarPage+'|'+skills.map(s=>s.id+':'+s.rank).join('|')+'|'+(me.dead?1:0);if(sig!==skillHotbarSig){skillHotbarSig=sig;box.replaceChildren();for(const [i,s]of skills.entries()){const b=document.createElement('button');b.dataset.skillId=s.id;if(touch){const name=document.createElement('span');name.textContent=s.name;const meta=document.createElement('small');meta.textContent=s.mp+'蓝';b.append(name,meta);b.classList.add('skill-orb');b.title=s.name+' · '+(s.rank?'等级 '+s.rank:'未学习')+' · 魔法 '+s.mp;b.setAttribute('aria-label','释放'+s.name)}else b.textContent='F'+(i+1)+' / '+(i+1)+' '+s.name+(s.rank?' Lv.'+s.rank:' 未学习');b.disabled=!s.rank||me.dead;if(touch&&typeof bindTouchSkill==='function')bindTouchSkill(b,s);else b.onclick=()=>castSkill(s.id);box.appendChild(b)}}}
 function openGrowth(tab){if(!me)return;stopActions();const dialog=$('growth-dialog');if(dialog.open&&growthTab===tab){dialog.close();return}growthTab=tab;$('growth-feedback').textContent='';renderGrowth();if(!dialog.open)dialog.show()}
-document.querySelectorAll('[data-mobile]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const a=b.dataset.mobile;if(a==='attack')attackNearest();else if(a==='pickup')pickupNearest();else if(a==='run'){toggleRun();b.textContent=runMode?'奔跑中':'奔跑'}else if(a==='chat'){const text=prompt('聊天内容（附近频道）');if(text&&text.trim())send('chat',{text:text.trim(),channel:'nearby',recipient:''})}else if(a==='talk'){const n=nearestNPC();n?talkToNPC(n):status('附近没有可交谈的NPC')}else if(a==='bag')openBag();else if(a==='skills')openGrowth('skills');else if(a==='character')openGrowth('attributes');else if(a==='map')openMap();else if(a==='quest')openGrowth('quest')}));
+document.querySelectorAll('[data-mobile]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const a=b.dataset.mobile;if(a==='attack')attackNearest();else if(a==='pickup')pickupNearest();else if(a==='run'){toggleRun();b.textContent=runMode?'奔跑中':'奔跑'}else if(a==='chat'){const text=prompt('聊天内容（附近频道）');if(text&&text.trim())send('chat',{text:text.trim(),channel:'nearby',recipient:''})}else if(a==='talk'){const n=nearestNPC();n?talkToNPC(n):status('附近没有可交谈的NPC')}else if(a==='bag')openBag();else if(a==='trade')openTradePrompt();else if(a==='skills')openGrowth('skills');else if(a==='character')openGrowth('attributes');else if(a==='map')openMap();else if(a==='quest')openGrowth('quest')}));
 $('quest-btn').onclick=()=>openGrowth('quest');$('quest-tracker').onclick=()=>openGrowth('quest');$('skills-btn').onclick=()=>openGrowth('skills');$('attributes-btn').onclick=()=>openGrowth('attributes');$('skills-hud-btn').onclick=()=>openGrowth('skills');$('character-hud-btn').onclick=()=>openGrowth('attributes');$('close-growth').onclick=()=>$('growth-dialog').close();$('stop-training').onclick=()=>send('train',{skill_id:''});
 function growthButton(label,action,disabled=false){const b=document.createElement('button');b.textContent=label;b.disabled=disabled;b.onclick=action;return b}
 function renderGrowth(){if(!me)return;const dialog=$('growth-dialog'),box=$('growth-content');box.replaceChildren();dialog.classList.toggle('classic-skills',growthTab==='skills');dialog.classList.toggle('classic-character',growthTab==='attributes');$('growth-title').textContent={quest:'玛法主线',skills:'职业技能与练功',attributes:'人物属性'}[growthTab];
@@ -857,8 +884,21 @@ function drawSkillEffects(now,cx,cy){
  }
 }
 $('pk-btn').onclick=()=>{if(me?.level<5){status('达到5级后开放自由PK');return}pkMode=!pkMode;$('pk-btn').textContent=pkMode?'自由PK：开':'和平模式';$('pk-btn').setAttribute('aria-pressed',String(pkMode));status(pkMode?'点击邻近玩家攻击；安全区、复活保护及5级以下玩家受保护':'已切回和平模式')};
+let tradeState=null;
+function openTradePrompt(){if(!me)return;const name=prompt('输入要交易的玩家名字');if(name&&name.trim())send('trade_invite',{recipient:name.trim()})}
+function tradeItemButton(it,action){const b=document.createElement('button');b.className='trade-item';b.textContent=it.name+(it.equipped?'（装备中）':'');b.disabled=!!it.equipped;b.onclick=action;return b}
+function renderTrade(){const d=tradeState;if(!d)return;const status=$('trade-status');status.textContent=(d.other_ready?'对方已准备 · ':'')+(d.ready?'你已准备 · ':'')+'与 '+d.other_name+' 交易中';
+ const bag=$('trade-bag'),mine=$('trade-mine'),theirs=$('trade-theirs');bag.replaceChildren();mine.replaceChildren();theirs.replaceChildren();
+ const offered=new Set((d.items||[]).map(x=>x.id));for(const it of (d.bag||me?.inventory||[])){if(!it.id||!it.id.startsWith('loot_')||offered.has(it.id))continue;bag.appendChild(tradeItemButton(it,()=>send('trade_add',{item_id:it.id})))}
+ for(const it of d.items||[])mine.appendChild(tradeItemButton(it,()=>send('trade_remove',{item_id:it.id})));
+ for(const it of d.other_items||[]){const b=document.createElement('button');b.className='trade-item';b.disabled=true;b.textContent=it.name;theirs.appendChild(b)}
+ $('trade-ready').textContent=d.ready?'取消准备':'准备交易';$('trade-ready').onclick=()=>send('trade_ready',{ready:!d.ready});
+}
+$('trade-btn').onclick=openTradePrompt;
+$('close-trade').onclick=()=>{send('trade_cancel');$('trade-dialog').close()};
+$('trade-cancel').onclick=()=>{send('trade_cancel');$('trade-dialog').close()};
 function receiveRankings(data){rankingData=data;renderRankings()}
-function renderRankings(){const box=$('rank-rows');box.replaceChildren();$('rank-formula').textContent=rankingData?.formula||'正在读取排行榜…';for(const [i,r]of (rankingData?.[rankingTab]||[]).entries()){const tr=document.createElement('tr');for(const v of [i+1,r.name,classes[r.class]||r.class,r.level,r.power]){const td=document.createElement('td');td.textContent=v;tr.appendChild(td)}box.appendChild(tr)}if(rankingData&&!box.children.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=5;td.textContent='暂无角色';tr.appendChild(td);box.appendChild(tr)}}
+function renderRankings(){const box=$('rank-rows');box.replaceChildren();$('rank-formula').textContent=rankingData?.formula||'正在读取排行榜…';for(const [i,r]of (rankingData?.[rankingTab]||[]).entries()){const tr=document.createElement('tr');for(const v of [i+1,r.name,classes[r.class]||r.class,r.level,r.power]){const td=document.createElement('td');td.textContent=v;tr.appendChild(td)}const status=document.createElement('td');status.textContent=r.online?'在线':'离线';status.className=r.online?'rank-online':'rank-offline';tr.appendChild(status);box.appendChild(tr)}if(rankingData&&!box.children.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=6;td.textContent='暂无角色';tr.appendChild(td);box.appendChild(tr)}}
 $('ranking-btn').onclick=()=>{stopActions();renderRankings();$('ranking-dialog').showModal();send('rankings')};$('close-ranking').onclick=()=>$('ranking-dialog').close();$('rank-level').onclick=()=>{rankingTab='level';renderRankings()};$('rank-power').onclick=()=>{rankingTab='power';renderRankings()};$('rank-refresh').onclick=()=>send('rankings');
 function cancelQuestRoute(){questRequest++;questController?.abort();questController=null;questRoute=null;$('cancel-route').hidden=true}
 $('cancel-route').onclick=()=>{cancelQuestRoute();stopActions();status('已停止寻路')};
