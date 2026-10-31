@@ -64,3 +64,28 @@ body:has(#skill-pages:not([hidden])) #party-panel{top:248px}
  #skill-pages{bottom:230px}
  body.in-game:has(#skill-pages:not([hidden])) #status{bottom:270px!important;left:max(180px,env(safe-area-inset-left));right:max(250px,env(safe-area-inset-right))}
 }
+
+/* One toolbar remains reachable when the skill buttons are folded away. */
+#skill-hotbar[hidden],#skill-tools[hidden]{display:none!important}
+#skill-tools{position:absolute;top:210px;left:22px;display:flex;align-items:center;gap:6px;z-index:24;color:#eddaa9;font:12px sans-serif}
+#skill-tools #skill-pages{position:static;display:flex;width:auto;gap:6px}
+#skill-toggle{min-height:32px;padding:4px 8px;border:1px solid #8b7549;background:#18150cee;color:#eddaa9;font:12px sans-serif;touch-action:manipulation}
+body.in-game:has(#skill-tools:not([hidden])) #party-panel{top:248px}
+body.skills-collapsed #skill-tools{top:174px}
+body.skills-collapsed:has(#skill-tools:not([hidden])) #party-panel{top:212px}
+@media (max-width:820px), (pointer:coarse) and (max-width:1024px){
+ #skill-tools{position:fixed;top:auto!important;left:auto;right:max(12px,env(safe-area-inset-right));bottom:calc(max(20px,env(safe-area-inset-bottom)) + 230px);width:226px;justify-content:flex-end;gap:4px}
+ #skill-tools #skill-pages{gap:4px}
+ #skill-pages button{padding:4px 5px;min-height:32px}
+ #skill-toggle{padding:4px 5px;white-space:nowrap}
+ body.in-game:has(#skill-tools:not([hidden])) #status{bottom:calc(max(20px,env(safe-area-inset-bottom)) + 270px)!important}
+ body.skills-collapsed #skill-tools{bottom:calc(max(20px,env(safe-area-inset-bottom)) + 112px);width:auto}
+ body.in-game.skills-collapsed:has(#skill-tools:not([hidden])) #status{bottom:calc(max(20px,env(safe-area-inset-bottom)) + 214px)!important;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right))}
+}
+@media (max-width:350px){#skill-tools{width:210px}}
+@media (max-height:520px) and (orientation:landscape) and (max-width:820px), (max-height:520px) and (orientation:landscape) and (pointer:coarse) and (max-width:1024px){
+ #skill-tools{bottom:230px}
+ body.in-game:has(#skill-tools:not([hidden])) #status{bottom:270px!important;left:max(180px,env(safe-area-inset-left));right:max(250px,env(safe-area-inset-right))}
+ body.skills-collapsed #skill-tools{bottom:112px}
+ body.in-game.skills-collapsed:has(#skill-tools:not([hidden])) #status{bottom:220px!important;left:max(180px,env(safe-area-inset-left));right:max(250px,env(safe-area-inset-right))}
+}
