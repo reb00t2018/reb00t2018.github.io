@@ -577,9 +577,17 @@ async function loadRegion(force=false){
  finally{regionPending.delete(requestKey)}})();regionPending.set(requestKey,pending);return pending;
 }
 
-const libMeta=new Map();let dungeonMetaPromise=null;
+const libMeta=new Map(),nativeLibMeta=new Map();let dungeonMetaPromise=null;
 function metaFor(lib){
- if(currentScene?.resource_map&&/^(?:Tiles\d*|SmTiles\d*|Objects\d*)$/.test(lib))return Promise.resolve({});
+ if(currentScene?.resource_map&&/^(?:Tiles\d*|SmTiles\d*|Objects\d*)$/.test(lib)){
+  if(!nativeLibMeta.has(lib)){
+   while(nativeLibMeta.size>=12)nativeLibMeta.delete(nativeLibMeta.keys().next().value);
+   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+   const promise=fetch(serverURL('/assets/'+lib+'/meta.json'),{signal:controller.signal}).then(r=>{if(!r.ok)throw Error('地图贴图信息暂不可用');return r.json()}).finally(()=>clearTimeout(timeout)).catch(e=>{if(nativeLibMeta.get(lib)===promise)nativeLibMeta.delete(lib);throw e});
+   nativeLibMeta.set(lib,promise);
+  }
+  return nativeLibMeta.get(lib);
+ }
  if(ASSET_WEBP&&currentScene?.map_binding_version>=2&&/^(?:Tiles\d*|SmTiles\d*|Objects\d*)$/.test(lib)){
   if(!dungeonMetaPromise){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);dungeonMetaPromise=fetch('/api/map-assets.json',{signal:controller.signal}).then(r=>{if(!r.ok)throw Error('map metadata missing');return r.json()}).finally(()=>clearTimeout(timer)).catch(error=>{dungeonMetaPromise=null;throw error})}
   return dungeonMetaPromise.then(m=>m[lib]||{});
@@ -591,9 +599,9 @@ function sprite(lib,index){
  if(old&&(!old.failed||old.attempt>=3||performance.now()<old.retryAt))return old;
  const f={ready:false,attempt:(old?.attempt||0)+1};spriteCache.set(key,f);
  const singleMetadata=()=>fetchAsset('/assets/'+key+'.json').then(r=>{if(!r.ok)throw Error('metadata missing');return r.json()});
- const meta=ASSET_MANIFEST?metaFor(lib).then(m=>m[index]||singleMetadata(),singleMetadata):singleMetadata();let timer;
- const image=meta.then(m=>{if(m.empty){const blank=document.createElement('canvas');blank.width=blank.height=1;return blank}return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);setImage(im,'/assets/'+key+'.png',reject)})});
- Promise.race([Promise.all([meta,image]),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('sprite timeout')),ASSET_WEBP?60000:12000)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});invalidateBackground();redraw()}).catch(error=>{f.failed=true;f.error=error?.message||String(error);f.retryAt=performance.now()+2000*f.attempt;if(f.attempt<3)setTimeout(()=>{if(spriteCache.get(key)!==f)return;invalidateBackground();redraw()},Math.max(0,f.retryAt-performance.now())+1)}).finally(()=>clearTimeout(timer));return f;
+ const meta=(ASSET_MANIFEST||(currentScene?.resource_map&&/^(?:Tiles\d*|SmTiles\d*|Objects\d*)$/.test(lib)))?metaFor(lib).then(m=>m[index]||singleMetadata(),singleMetadata):singleMetadata();let timer;
+ const image=meta.then(m=>{if(spriteCache.get(key)!==f)throw Error('sprite no longer needed');if(m.empty){const blank=document.createElement('canvas');blank.width=blank.height=1;return blank}return new Promise((resolve,reject)=>{const im=new Image();f.cancel=()=>{im.onload=null;im.onerror=null;im.removeAttribute('src');reject(Error('scene changed'))};im.onload=()=>{f.cancel=null;resolve(im)};setImage(im,'/assets/'+key+'.png',e=>{f.cancel=null;reject(e)})})});
+ Promise.race([Promise.all([meta,image]),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('sprite timeout')),(ASSET_WEBP||currentScene?.resource_map)?60000:12000)})]).then(([m,im])=>{Object.assign(f,m,{im,ready:true});invalidateBackground();redraw()}).catch(error=>{f.failed=true;f.error=error?.message||String(error);f.retryAt=performance.now()+2000*f.attempt;if(f.attempt<3)setTimeout(()=>{if(spriteCache.get(key)!==f)return;invalidateBackground();redraw()},Math.max(0,f.retryAt-performance.now())+1)}).finally(()=>clearTimeout(timer));return f;
 }
 
 function draw(){
@@ -848,6 +856,7 @@ function receiveMonsterHit(c){
  if(c.target_id===me?.id){playSfx('hit');document.body.classList.add('hurt');setTimeout(()=>document.body.classList.remove('hurt'),200);log('受伤',`${c.attacker_name}造成 ${c.damage} 点伤害${c.killed?'，你已倒下。':'。'}`)}
 }
 function changeScene(scene){
+ if(currentScene?.resource_map||scene.resource_map){for(const f of spriteCache.values())f.cancel?.();spriteCache.clear()}
  sceneEpoch++;invalidateBackground();portals=[];activeNPC=null;for(const d of document.querySelectorAll('dialog[open]'))d.close();stopMonsterSounds();currentScene=scene;me=null;mapCache.clear();regionCache.clear();regionRetryAt.clear();players.clear();resetControls();npcs=[];
  for(const d of document.querySelectorAll('dialog[open]'))d.close();
  $('scene').querySelector('h2').textContent=scene.name;$('scene').querySelector('p').textContent=scene.province;
