@@ -462,8 +462,10 @@ function changeScene(scene){
  $('scene').querySelector('h2').textContent=scene.name;$('scene').querySelector('p').textContent=scene.province;
  document.querySelector('.scene-note').innerHTML='初入'+scene.name+'<br>① 出生点附近为安全区<br>② 走出村落，留意主动怪物<br>③ 点击掉落装备或按 F 拾取<br>④ 底部传送可切换地图';
  if(scene.dungeon)document.querySelector('.scene-note').innerHTML='建议等级 '+scene.recommended_level+'–'+scene.max_level+'<br>① 附近怪物会主动追击<br>② 点击地面物品或按 F 拾取<br>③ 使用底部传送切图，已开放入口可直接走入<br>④ 入口附近安全，注意持久与药品';
+ if(scene.resource_map)document.querySelector('.scene-note').textContent=scene.name+' · 原图探索。打开地图查看地形，使用传送返回城镇。';
  $('death-dialog').querySelector('p').textContent=scene.dungeon?'回到本层入口恢复生命与魔法，等级和装备保留。':'回到村中恢复生命与魔法，等级和装备会保留。';
- $('revive-btn').textContent=scene.dungeon?'返回本层入口':'回村复活';
+ $('revive-btn').textContent=scene.resource_map?'返回安全位置':scene.dungeon?'返回本层入口':'回村复活';
+ if(scene.resource_map)$('death-dialog').querySelector('p').textContent='返回本图安全位置恢复生命与魔法，等级和装备保留。';
  setMusic(scene.music||null);
 }
 function updateMapMusic(){if(!me)return;const city=me.map_id===0&&Math.abs(me.x-343)+Math.abs(me.y-245)<=145;const town=me.map_id===3;const room=[102,103,108,109].includes(me.map_id);setMusic(city||town||room?null:('music' in currentScene?currentScene.music:'/audio/field2.wav'))}
@@ -999,8 +1001,8 @@ function renderMapCatalog(){
  const box=$('map-catalog-results');box.replaceChildren();
  for(const r of rows.slice(mapCatalogPage*20,mapCatalogPage*20+20)){
   const b=document.createElement('button');b.type='button';b.dataset.map=String(r.id);b.textContent=r.name;const small=document.createElement('small');small.textContent=r.file+' · '+r.width+'×'+r.height+(r.recommended_level?' · 推荐 '+r.recommended_level+' 级':'');b.appendChild(small);
-  const need=Number(r.required_level||0);b.disabled=!r.available||(!!need&&me?.level<need)||(me?.map_id===r.id&&r.id!==0);b.title=r.note||'';
-  b.onclick=()=>{if(!me||me.dead)return;$('map-catalog-note').textContent=r.note||'';stopActions();if(send('travel',{map_id:r.id})){$('travel-dialog').close();status('正在前往 '+r.name)}};box.appendChild(b);
+  const need=Number(r.required_level||0);b.disabled=!r.available||(!!need&&me?.level<need)||(me?.map_id===r.id&&r.id!==0);b.title=r.missing_cells?'此原图部分边缘缺损，缺损处无法通行。':r.group==='classic'?r.name:'原图 '+r.file+'，可直接进入探索。';
+  b.onclick=()=>{if(!me||me.dead)return;stopActions();if(send('travel',{map_id:r.id})){$('travel-dialog').close();status('正在前往 '+r.name)}};box.appendChild(b);
  }
  if(!rows.length)box.textContent='未找到匹配地图。';
  $('map-catalog-page').textContent=(mapCatalogPage+1)+' / '+pages;$('map-catalog-prev').disabled=mapCatalogPage===0;$('map-catalog-next').disabled=mapCatalogPage+1>=pages;

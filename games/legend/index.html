@@ -50,7 +50,7 @@
 #inventory-dialog{z-index:40}
 .jewelry-slot.broken{border-color:#ff5252}.jewelry-slot.broken img{filter:grayscale(1);opacity:.5}
 #login-dialog{width:440px}#login-tabs{display:flex;gap:8px;margin-bottom:16px}#login-tabs button{flex:1;padding:7px 10px}#login-tabs button.active{background:#5e4526;border-color:#d0a65d;color:#ffe7b0}.login-pane label{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.login-pane input{width:100%}#invite-code{font:16px ui-monospace,monospace;letter-spacing:2px;text-transform:uppercase}.login-error{min-height:1.2em;color:#ff9d8a;font:12px sans-serif}.invite-copy{font:12px/1.7 sans-serif;color:#bda98a;margin:8px 0}#online-count{position:absolute;right:24px;top:76px;z-index:6;background:#100e0bd9;border:1px solid #65523a;padding:4px 9px;font:12px sans-serif;color:#cfe3ad;text-shadow:0 1px 2px #000}@media(max-width:800px){#online-count{top:125px;right:8px;font-size:11px}}
-#map-catalog-tabs{margin:12px 0;gap:6px}#map-catalog-tabs button[aria-pressed=true]{background:#755b2e;color:#fff1bf}#map-catalog-search{width:100%;padding:9px;margin:5px 0 12px;background:#181611;border:1px solid #81704a;color:#f2e3bf;font-size:14px}#map-catalog-results{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:42dvh;overflow:auto}#map-catalog-results button{text-align:left;overflow-wrap:anywhere;min-height:48px;white-space:normal}#map-catalog-results small{display:block;opacity:.75;font-size:10px}#map-catalog-summary,#map-catalog-note{font:12px/1.6 sans-serif}#map-catalog-page{align-self:center}#travel-dialog #close-travel{margin-top:12px}
+#map-catalog-tabs{margin:12px 0;gap:6px}#map-catalog-tabs button[aria-pressed=true]{background:#755b2e;color:#fff1bf}#map-catalog-search{width:100%;padding:9px;margin:5px 0 12px;background:#181611;border:1px solid #81704a;color:#f2e3bf;font-size:14px}#map-catalog-results{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:42dvh;overflow:auto}#map-catalog-results button{text-align:left;overflow-wrap:anywhere;min-height:48px;white-space:normal}#map-catalog-results small{display:block;opacity:.75;font-size:10px}#map-catalog-summary,#map-catalog-note{font:12px/1.6 sans-serif}#map-catalog-page{align-self:center}#travel-dialog #close-travel{margin-top:12px;position:sticky;bottom:0;z-index:2;background:#201b12;min-height:40px}
 </style>
 <style>
 /* Prguse 1 places the role and skill controls around x655 and x735. */
@@ -95,7 +95,7 @@
 <div class="travel-grid"><button data-map="0">比奇城中心</button><button data-waypoint="village">银杏村口</button><button data-map="3">盟重土城</button></div>
 <div id="map-catalog-tabs" class="travel-grid"><button data-map-group="classic">经典地图</button><button data-map-group="later">后续版本</button><button data-map-group="client">其他原图</button><button data-map-group="all">全部</button></div>
 <label for="map-catalog-search">查找地图</label><input id="map-catalog-search" type="search" placeholder="地图名称或原图编号" autocomplete="off">
-<div id="map-catalog-results" class="travel-grid"></div><p id="map-catalog-note">未核实原名的地图保留客户端编号；未知原服出口暂不猜测连接。</p>
+<div id="map-catalog-results" class="travel-grid"></div><p id="map-catalog-note">地图名尚未确认的以原编号显示，可在上方搜索查找。</p>
 <div class="travel-grid"><button id="map-catalog-prev">上一页</button><span id="map-catalog-page"></span><button id="map-catalog-next">下一页</button></div>
 <button id="close-travel">返回游戏</button></dialog>
 <dialog id="map-dialog"><header><h2>地图与 NPC</h2><button id="close-map">×</button></header><div class="map-tools"><button id="map-all">全图</button><button id="map-near">当前位置</button><span id="map-position"></span></div><div class="map-layout"><canvas id="large-map" width="400" height="300"></canvas><div id="map-npcs"></div></div><p id="map-selection">白点：你 · 绿点：NPC · 红点：怪物（含鸡鹿）</p></dialog><dialog id="growth-dialog"><header><h2 id="growth-title"></h2><button id="close-growth" aria-label="关闭成长面板">×</button></header><div id="growth-content"></div><p id="growth-feedback" role="status"></p></dialog><style>/* Client frame + original paper-doll layers, arranged like the supplied equipment reference. */
@@ -853,8 +853,10 @@ function changeScene(scene){
  $('scene').querySelector('h2').textContent=scene.name;$('scene').querySelector('p').textContent=scene.province;
  document.querySelector('.scene-note').innerHTML='初入'+scene.name+'<br>① 出生点附近为安全区<br>② 走出村落，留意主动怪物<br>③ 点击掉落装备或按 F 拾取<br>④ 底部传送可切换地图';
  if(scene.dungeon)document.querySelector('.scene-note').innerHTML='建议等级 '+scene.recommended_level+'–'+scene.max_level+'<br>① 附近怪物会主动追击<br>② 点击地面物品或按 F 拾取<br>③ 使用底部传送切图，已开放入口可直接走入<br>④ 入口附近安全，注意持久与药品';
+ if(scene.resource_map)document.querySelector('.scene-note').textContent=scene.name+' · 原图探索。打开地图查看地形，使用传送返回城镇。';
  $('death-dialog').querySelector('p').textContent=scene.dungeon?'回到本层入口恢复生命与魔法，等级和装备保留。':'回到村中恢复生命与魔法，等级和装备会保留。';
- $('revive-btn').textContent=scene.dungeon?'返回本层入口':'回村复活';
+ $('revive-btn').textContent=scene.resource_map?'返回安全位置':scene.dungeon?'返回本层入口':'回村复活';
+ if(scene.resource_map)$('death-dialog').querySelector('p').textContent='返回本图安全位置恢复生命与魔法，等级和装备保留。';
  setMusic(scene.music||null);
 }
 function updateMapMusic(){if(!me)return;const city=me.map_id===0&&Math.abs(me.x-343)+Math.abs(me.y-245)<=145;const town=me.map_id===3;const room=[102,103,108,109].includes(me.map_id);setMusic(city||town||room?null:('music' in currentScene?currentScene.music:'/audio/field2.wav'))}
@@ -1390,8 +1392,8 @@ function renderMapCatalog(){
  const box=$('map-catalog-results');box.replaceChildren();
  for(const r of rows.slice(mapCatalogPage*20,mapCatalogPage*20+20)){
   const b=document.createElement('button');b.type='button';b.dataset.map=String(r.id);b.textContent=r.name;const small=document.createElement('small');small.textContent=r.file+' · '+r.width+'×'+r.height+(r.recommended_level?' · 推荐 '+r.recommended_level+' 级':'');b.appendChild(small);
-  const need=Number(r.required_level||0);b.disabled=!r.available||(!!need&&me?.level<need)||(me?.map_id===r.id&&r.id!==0);b.title=r.note||'';
-  b.onclick=()=>{if(!me||me.dead)return;$('map-catalog-note').textContent=r.note||'';stopActions();if(send('travel',{map_id:r.id})){$('travel-dialog').close();status('正在前往 '+r.name)}};box.appendChild(b);
+  const need=Number(r.required_level||0);b.disabled=!r.available||(!!need&&me?.level<need)||(me?.map_id===r.id&&r.id!==0);b.title=r.missing_cells?'此原图部分边缘缺损，缺损处无法通行。':r.group==='classic'?r.name:'原图 '+r.file+'，可直接进入探索。';
+  b.onclick=()=>{if(!me||me.dead)return;stopActions();if(send('travel',{map_id:r.id})){$('travel-dialog').close();status('正在前往 '+r.name)}};box.appendChild(b);
  }
  if(!rows.length)box.textContent='未找到匹配地图。';
  $('map-catalog-page').textContent=(mapCatalogPage+1)+' / '+pages;$('map-catalog-prev').disabled=mapCatalogPage===0;$('map-catalog-next').disabled=mapCatalogPage+1>=pages;
