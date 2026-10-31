@@ -93,7 +93,7 @@
 <dialog id="death-dialog"><h2>你已倒下</h2><p>回到村中恢复生命与魔法，等级和装备会保留。</p><button id="revive-btn">回村复活</button></dialog>
 <dialog id="travel-dialog"><h2>地图传送</h2><p id="map-catalog-summary">正在读取地图…</p>
 <div class="travel-grid"><button data-map="0">比奇城中心</button><button data-waypoint="village">银杏村口</button><button data-map="3">盟重土城</button></div>
-<div id="map-catalog-tabs" class="travel-grid"><button data-map-group="all">全部地图</button><button data-map-group="outdoors">城镇与野外</button><button data-map-group="dungeon">洞穴地宫</button><button data-map-group="shops">商店</button></div>
+<div id="map-catalog-tabs" class="travel-grid"><button data-map-group="all">全部地图</button><button data-map-group="outdoors">城镇与野外</button><button data-map-group="dungeon">洞穴地宫</button></div>
 <label for="map-catalog-search">查找地图</label><input id="map-catalog-search" type="search" placeholder="搜索地图名称" autocomplete="off">
 <div id="map-catalog-results" class="travel-grid"></div><p id="map-catalog-note">选择目的地即可传送，部分地图需要达到相应等级。</p>
 <div class="travel-grid"><button id="map-catalog-prev">上一页</button><span id="map-catalog-page"></span><button id="map-catalog-next">下一页</button></div>
@@ -402,6 +402,8 @@ const assetURL=p=>{
  if(currentScene?.resource_map&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p))return serverURL(p);
  // Corrected dungeon tiles are mirrored on the game server; Pages remains the fallback.
  if(ASSET_CDN&&/^\/assets\/(?:Tiles\d*|SmTiles\d*|Objects\d*)\//.test(p)&&currentScene?.map_binding_version>=2)return serverURL('/map-assets/'+p.slice('/assets/'.length));
+ const freshMagic=p.match(/^\/assets\/Magic\/(\d+)\.(?:png|json)$/);
+ if(ASSET_CDN&&(/^\/assets\/Mon28\//.test(p)||p.startsWith('/assets/Magic/meta.json')||(freshMagic&&((+freshMagic[1]>=1630&&+freshMagic[1]<=1635)||(+freshMagic[1]>=1790&&+freshMagic[1]<=1809)||(+freshMagic[1]>=3880&&+freshMagic[1]<=3892)))))return serverURL('/map-assets/'+p.slice('/assets/'.length));
  if(ASSET_CDN&&/^\/assets\/(?:Weapon|Hum|Items|stateitem)\//.test(p))return serverURL('/map-assets/'+p.slice('/assets/'.length));
  if(ASSET_CDN)return ASSET_CDN+p;
  return localAssetURL(p);
@@ -516,8 +518,8 @@ $('login-btn').onclick=()=>{if(!selectedRole||(ws&&ws.readyState<2))return;playM
   if(m.op==='revived'){motions.delete(m.data.id);players.delete(m.data.id);if(m.data.id===me?.id){me=m.data;stopActions();if($('death-dialog').open)$('death-dialog').close();loadRegion()}applyPlayer(m.data,false);hud();if(m.data.id===me?.id)status('已回到安全区，生命与魔法恢复')}
   if(m.op==='welcome'){me=m.data;$('classic-hud').hidden=false;document.body.classList.add('in-game');players.set(me.id,me);$('game-screen').style.display='block';$('login-screen').style.display='none';$('game-actions').hidden=false;status();loadRegion();hud();updateMapMusic();log('系统',`${me.name}来到${currentScene.name}。打开背包，准备好衣服与木剑。`)}
   if(m.op==='players'){for(const p of m.data)applyPlayer(p,false)}
-  if(m.op==='monsters')updateMonsters(m.data);if(m.op==='pet_update')applyPlayer(m.data);
-  if(m.op==='party_invite'){status(m.data.from+' 邀请你组队，输入 /接受');log('组队',m.data.from+' 邀请你组队，输入 /接受')}if(m.op==='party'){renderParty(m.data)}if(m.op==='combat')receiveCombat(m.data);if(m.op==='rankings')receiveRankings(m.data);if(m.op==='skill_effect'){const p=m.data.player;if(p.id===me?.id){markSkillCooldown(m.data.skill);nextInputAt=Math.max(nextInputAt,performance.now()+(p.duration_ms||550)+40)}addSkillEffect(m.data.skill||'heal',p.x,p.y,p.x,p.y)}
+  if(m.op==='ground_effects'){receiveGroundEffects(m.data);return}if(m.op==='monsters')updateMonsters(m.data);if(m.op==='pet_update')applyPlayer(m.data);
+  if(m.op==='party_invite'){status(m.data.from+' 邀请你组队，输入 /接受');log('组队',m.data.from+' 邀请你组队，输入 /接受')}if(m.op==='party'){renderParty(m.data)}if(m.op==='combat')receiveCombat(m.data);if(m.op==='rankings')receiveRankings(m.data);if(m.op==='skill_effect')receiveSupportEffect(m.data)
   if(m.op==='npcs'){npcs=m.data;hud()}
   if(m.op==='join')applyPlayer(m.data,false);
   if(m.op==='move'||m.op==='inventory'){applyPlayer(m.data);if(m.data.id===me?.id){if(m.op==='inventory'){equipPending=false;if(bagPending){status(bagPending==='sort'?'背包已按类别整理并保存':'所选物品已销毁');bagPending='';bagSelection.clear();discardIds=[];bagMulti=false;}renderBag();if($('growth-dialog').open)renderGrowth();status('背包与装备已保存')}}}
@@ -636,6 +638,7 @@ function draw(){
   label(d.name+(d.required_level?' · Lv.'+d.required_level:''),x,y-22,d.required_level>=5?'#a9d6ff':'#f9dd79');dropHits.push({d,x:x-28,y:y-36,w:56,h:55});
  }
  for(const g of portals){const x=g.x*TW-cx+24,y=g.y*TH-cy+16;if(x<-100||x>viewportWidth+100||y<-100||y>viewportHeight+100)continue;ctx.strokeStyle='#d6bc6c';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y,22,10,0,0,Math.PI*2);ctx.stroke();label(g.name+' · 走入',x,y-18,'#ffe5a1')}
+ drawGroundEffects(now,cx,cy);
  const entities=[];for(const n of npcs)entities.push({kind:'npc',p:n,pos:n});
  for(const m of monsters.values())if(m.hp>0)entities.push({kind:'monster',p:m,pos:positionOf(m,monsterMotions.get(m.id),now)});
  for(const p of players.values()){entities.push({kind:'player',p,pos:positionOf(p,motions.get(p.id),now)});if(p.companion?.hp>0)entities.push({kind:'companion',p:p.companion,pos:positionOf(p.companion,companionMotions.get(p.id),now)})}
@@ -647,7 +650,7 @@ function draw(){
    const f=actor(p.library||'Mon1',index,x,py,(p.base||0)+p.dir*monsterAnimations.idle.stride);
    const top=f?.ready?py+f.offsetY-20:py-35;
    if(p.id===attackTarget){ctx.strokeStyle='#edb260';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x+24,py+20,24,12,0,0,Math.PI*2);ctx.stroke()}
-   label((p.boss?'【BOSS】':'')+p.name+' Lv.'+(p.level||1),x+24,top,p.boss?'#ffd05a':p.friendly?'#9aefb3':'#ffdf9f');ctx.fillStyle='#21100e';ctx.fillRect(x+3,top+5,42,4);ctx.fillStyle=p.friendly?'#55bb80':'#bd4940';ctx.fillRect(x+3,top+5,42*p.hp/p.max_hp,4);ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.strokeRect(x+2.5,top+4.5,43,5);ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillStyle='#e6cf9a';ctx.fillText('防'+(p.defense??0),x+49,top+10);
+   label((p.boss?'【BOSS】':'')+p.name+' Lv.'+(p.friendly?(p.pet_level??p.level??0):(p.level||1)),x+24,top,p.boss?'#ffd05a':p.friendly?'#9aefb3':'#ffdf9f');ctx.fillStyle='#21100e';ctx.fillRect(x+3,top+5,42,4);ctx.fillStyle=p.friendly?'#55bb80':'#bd4940';ctx.fillRect(x+3,top+5,42*p.hp/p.max_hp,4);ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.strokeRect(x+2.5,top+4.5,43,5);ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillStyle='#e6cf9a';ctx.fillText('防'+(p.defense??0),x+49,top+10);
    if(f?.ready&&!p.friendly)monsterHits.push({m:p,x:x+f.offsetX-8,y:py+f.offsetY-18,w:f.width+16,h:f.height+24});return;
   }
   const g=p.gender==='female'?600:0,base=(p.armor_base??(p.armor?1200:0))+g,af=frameFor(playerAnimations,motions.get(p.id),p.dir,p.id),body=base+af.index,weapon=(p.weapon_base||1200)+g+af.index;
@@ -674,11 +677,12 @@ window.addEventListener('resize',resize);resize();loadRoles();
 const keyDir={ArrowUp:0,w:0,ArrowRight:2,d:2,ArrowDown:4,s:4,ArrowLeft:6,a:6,q:7,e:1,z:5,c:3};
 // Animation timing is driven by accepted server actions; rendering interpolates between tiles.
 const motions=new Map(),monsters=new Map(),monsterMotions=new Map(),companionMotions=new Map(),damageLabels=[];
+const groundEffects=new Map();
 const groundDrops=new Map();let dropHits=[],pickupTarget=null;
 let playerHits=[],guardArrows=[];const skillEffects=[];let pkMode=false,questRoute=null,questRequest=0,rankingData=null,rankingTab='level';
 let monsterHits=[],attackTarget=null,destination=null,runMode=false,heldDirection=null,shiftHeld=false,nextInputAt=0,skillActionReadyAt=0,skillHotbarPage=0,skillHotbarSig="";const skillReadyAt=new Map();
 const heldKeys=new Map();
-const playerAnimations={idle:{offset:0,stride:8,count:4},walk:{offset:64,stride:8,count:6},run:{offset:128,stride:8,count:6},attack:{offset:192,stride:8,count:6}};
+const playerAnimations={idle:{offset:0,stride:8,count:4},walk:{offset:64,stride:8,count:6},run:{offset:128,stride:8,count:6},attack:{offset:192,stride:8,count:6},cast:{offset:384,stride:8,count:6},thrust:{offset:256,stride:8,count:6},sweep:{offset:320,stride:8,count:6}};
 const monsterAnimations={idle:{offset:0,stride:10,count:4},walk:{offset:80,stride:10,count:6},attack:{offset:160,stride:10,count:6}};
 function positionOf(p,motion,now=performance.now()){
  if(!motion)return {x:p.x,y:p.y};
@@ -723,18 +727,18 @@ function updateTarget(){
  $('target-panel').classList.toggle('selected',!!m);
  $('monster-count').textContent=`附近生物 ${[...monsters.values()].filter(m=>m.hp>0&&me&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=16).length}`
 }
-function receiveCombat(c){if(c.skill_id||c.skill_name){const p=players.get(c.attacker_id)||(c.attacker_id===me?.id?me:null);const effect=SKILL_FX[c.skill_id]?c.skill_id:(c.skill_name?'slash':null);if(p&&effect)addSkillEffect(effect,p.x,p.y,c.target_x,c.target_y)}if(c.skill_name&&c.attacker_id===me?.id)log('技能',c.skill_name);
+function receiveCombat(c){if(c.skill_id||c.skill_name){const p=players.get(c.attacker_id)||(c.attacker_id===me?.id?me:null);const effect=SKILL_FX[c.skill_id]?c.skill_id:(c.skill_name?'slash':null);if(p&&effect&&c.skill_id!=='fire_wall')addSkillEffect(effect,p.x,p.y,c.target_x,c.target_y)}if(c.skill_name&&c.attacker_id===me?.id)log('技能',c.skill_name);
  const m=monsters.get(c.target_id);if(m||c.target_x!==undefined)damageLabels.push({x:m?.x??c.target_x,y:m?.y??c.target_y,text:`−${c.damage}`,start:performance.now(),color:'#ffb76f'});
- if(c.player)applyPlayer(c.player);
- const attacker=players.get(c.attacker_id);if(attacker&&me&&Math.max(Math.abs(attacker.x-me.x),Math.abs(attacker.y-me.y))<16){playSfx('swing');playMonsterSound(c.killed?c.sound_death:c.sound_hit,{x:c.target_x,y:c.target_y})}
+ if(c.player)applyPlayer(c.player);if(c.pet_leveled&&c.attacker_id===me?.id){status('神兽成长至 '+(c.player?.companion?.pet_level??0)+' 级');log('宝宝','战斗成长：'+(c.player?.companion?.pet_level??0)+' / 7 级')}
+ const attacker=players.get(c.attacker_id);if(attacker&&me&&Math.max(Math.abs(attacker.x-me.x),Math.abs(attacker.y-me.y))<16){if(!c.periodic&&!c.companion_id)playSfx('swing');playMonsterSound(c.killed?c.sound_death:c.sound_hit,{x:c.target_x,y:c.target_y})}
  if(c.attacker_id===me?.id){
-  nextInputAt=Math.max(nextInputAt,performance.now()+(c.player?.duration_ms||me.attack_ms||550)+40);
+  if(!c.periodic&&!c.companion_id)nextInputAt=Math.max(nextInputAt,performance.now()+(c.player?.duration_ms||me.attack_ms||550)+40);
   if(c.skill_id)markSkillCooldown(c.skill_id);else if(c.skill_name){const skill=me.skills?.find(s=>s.name===c.skill_name);if(skill)markSkillCooldown(skill.id)}
   if(c.killed){if(attackTarget===c.target_id)attackTarget=null;if(c.drop)log('掉落',c.drop.name+'落在地上，点击或按 F 拾取');status(`击败${m?.name||c.target_name||'怪物'}，获得 ${c.exp||0} 点经验`);log('战斗',`击败${m?.name||c.target_name||'怪物'}，经验 +${c.exp||0}`)}
   if(c.leveled){playSfx('level');$('level-toast').textContent=`等级提升 · Lv.${me.level}`;$('level-toast').classList.add('show');setTimeout(()=>$('level-toast').classList.remove('show'),2600);log('成长',`升到 ${me.level} 级！生命和攻击提升。`)}
  }
 }
-function resetControls(){skillReadyAt.clear();skillActionReadyAt=0;skillHotbarPage=0;if(typeof clearTouchCooldown==='function')clearTouchCooldown();resetJoystick();skillHotbarSig="";onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();companionMotions.clear();damageLabels.length=0;updateTarget()}
+function resetControls(){skillReadyAt.clear();skillActionReadyAt=0;skillHotbarPage=0;if(typeof clearTouchCooldown==='function')clearTouchCooldown();resetJoystick();skillHotbarSig="";onlineLoaded=false;onlineCount=0;const online=$('online-count');if(online)online.textContent='在线 -- 人';questRoute=null;skillEffects.length=0;groundEffects.clear();pkMode=false;renderParty(null);$('pk-btn').textContent='和平模式';$('pk-btn').setAttribute('aria-pressed','false');$('cancel-route').hidden=true;bagRepairNPC=null;bagSellNPC=null;bagRepairMessage='';bagSelection.clear();bagMulti=false;bagPending='';discardIds=[];groundDrops.clear();guardArrows=[];pickupTarget=null;heldKeys.clear();heldDirection=null;shiftHeld=false;destination=null;attackTarget=null;nextInputAt=0;motions.clear();monsters.clear();monsterMotions.clear();companionMotions.clear();damageLabels.length=0;updateTarget()}
 function toggleRun(){runMode=!runMode;$('run-btn').textContent=runMode?'奔跑':'行走';$('run-btn').setAttribute('aria-pressed',String(runMode))}
 $('run-btn').textContent='行走';$('run-btn').onclick=toggleRun;
 function chooseAttack(id){if(!me)return;const m=monsters.get(id);if(!m||m.hp<=0)return;pickupTarget=null;attackTarget=id;destination=null;heldKeys.clear();heldDirection=null;nextInputAt=0;updateTarget();cancelQuestRoute();status(`目标：${m.name}，自动释放攻击技能；移动或 Esc 取消`);inputTick()}
@@ -1245,8 +1249,8 @@ const SEQ=(a,b)=>{const r=[];for(let i=a;i<=b;i++)r.push(i);return r};
 const SKILL_FX={
  fireball:{type:'projectile',base:0,flightFrames:6,impact:SEQ(170,179),scale:1},
  big_fireball:{type:'projectile',base:400,flightFrames:6,impact:SEQ(570,579),scale:1},
- heal:{type:'self',frames:SEQ(250,269),scale:1.05},
- mass_heal:{type:'self',frames:SEQ(250,269),scale:1.15},
+ heal:{type:'self',frames:SEQ(200,209),scale:1},
+ mass_heal:{type:'self',frames:SEQ(1790,1809),scale:1},
  thunder:{type:'target',frames:SEQ(950,955),scale:1},
  hell_lightning:{type:'target',frames:[950,951,952,953,954,955,970,971,972,973,974,975],scale:1.35},
  poison:{type:'target',frames:SEQ(200,209),scale:1},
@@ -1254,23 +1258,43 @@ const SKILL_FX={
  soul_fireball:{type:'projectile',base:1160,flightFrames:3,impact:SEQ(1360,1369),scale:1},
  repulsion:{type:'self',frames:SEQ(900,905),scale:1},
  explosion:{type:'target',frames:SEQ(920,935),scale:1},
- fire_wall:{type:'target',frames:fireImpact,scale:1.2},
+ fire_wall:{type:'ground',frames:SEQ(1630,1635),scale:1},
  meteor:{type:'target',frames:fireImpact,scale:1.8},
  laser:{type:'beam',base:970,flightFrames:6,scale:1},
  ice_storm:{type:'target',frames:SEQ(880,889),scale:1.4},
- fire_sword:{type:'slash',color:'#ffc85a'},
+ fire_sword:{type:'weapon'},
  lion_roar:{type:'self',frames:SEQ(800,805),scale:1.4},
- magic_shield:{type:'self',frames:SEQ(880,889),scale:1.1},
+ magic_shield:{type:'self',frames:SEQ(3880,3892),scale:1},
  ghost_shield:{type:'self',frames:SEQ(1320,1335),scale:1},
  holy_armor:{type:'self',frames:SEQ(1340,1355),scale:1},
  invisibility:{type:'self',frames:SEQ(601,619),scale:1},
  summon:{type:'self',frames:SEQ(601,619),scale:1.15},
  teleport:{type:'self',frames:SEQ(601,619),scale:1},
  trap:{type:'target',frames:SEQ(601,619),scale:1},
- slash:{type:'slash'}
+ slash:{type:'weapon'}
 };
+
+function receiveSupportEffect(data){
+ const p=data.player;if(!p)return;
+ applyPlayer(p);
+ if(p.id===me?.id){markSkillCooldown(data.skill);nextInputAt=Math.max(nextInputAt,performance.now()+(p.duration_ms||550)+40)}
+ const targets=data.skill==='mass_heal'?(data.targets?.length?data.targets:[p]):[p];
+ for(const target of targets){if(target.id!==p.id)applyPlayer(target);addSkillEffect(data.skill||'heal',target.x,target.y,target.x,target.y)}
+}
+function receiveGroundEffects(rows){
+ const now=performance.now(),ids=new Set();
+ for(const row of rows||[]){if(row.kind!=='fire_wall'||!(row.duration_ms>0))continue;ids.add(row.id);const old=groundEffects.get(row.id);groundEffects.set(row.id,{...row,start:old?.start??now,until:now+row.duration_ms});for(const frame of SKILL_FX.fire_wall.frames)sprite('Magic',frame)}
+ for(const id of groundEffects.keys())if(!ids.has(id))groundEffects.delete(id);
+ redraw();
+}
+function drawGroundEffects(now,cx,cy){
+ const frames=SKILL_FX.fire_wall.frames;
+ for(const [id,e]of groundEffects){if(now>=e.until){groundEffects.delete(id);continue}const x=e.x*TW-cx+24,y=e.y*TH-cy;if(x < -150||x>viewportWidth+150||y < -50||y>viewportHeight+180)continue;drawMagic(frames[Math.floor((now-e.start)/100)%frames.length],x,y)}
+}
+
 function addSkillEffect(kind,x,y,tx,ty){
  const spec=SKILL_FX[kind]||SKILL_FX.slash,now=performance.now();
+ if(spec.type==='ground'||spec.type==='weapon')return;
  // Directional frames are drawn in screen space, where map cells are 48 x 32.
  const dx=(tx-x)*TW,dy=(ty-y)*TH,travel=Math.max(180,Math.min(900,Math.hypot(dx,dy)/.7));
  const impactDuration=(spec.impact?.length||0)*50;
@@ -1302,7 +1326,7 @@ function drawSkillEffects(now,cx,cy){
   }else if(spec.type==='self'){
    const f=spec.frames[Math.min(spec.frames.length-1,Math.floor(t*spec.frames.length))];drawMagic(f,sx,sy,spec.scale||1);
   }else{
-   ctx.save();ctx.globalAlpha=1-t;ctx.strokeStyle=spec.color||'#fff0a8';ctx.lineWidth=5*(1-t)+1;ctx.beginPath();ctx.arc(tx,ty,24+t*15,-2+t*2,1+t*2);ctx.stroke();ctx.restore();
+   // Unknown weapon overlays are not replaced with synthetic arcs.
   }
  }
 }
