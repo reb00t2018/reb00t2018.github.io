@@ -229,7 +229,7 @@ function draw(){
  const sx=Math.floor(cx/TW)-3,sy=Math.floor(cy/TH)-10,ex=Math.ceil((cx+viewportWidth)/TW)+3,ey=Math.ceil((cy+viewportHeight)/TH)+10;
  function tile(c,layer){if(c[layer]<0)return;const f=sprite(c[layer+'Library'],c[layer]);if(f?.ready){const x=c.x*TW-cx,y=layer==='back'?c.y*TH-cy:c.y*TH-cy+TH-f.height;if(f.atlas)ctx.drawImage(f.im,f.atlas_x,f.atlas_y,f.width,f.height,x,y,f.width,f.height);else ctx.drawImage(f.im,x,y)}}
  function tileOn(g,c,layer,ox,oy){if(c[layer]<0)return;const f=sprite(c[layer+'Library'],c[layer]);if(f?.ready){const x=c.x*TW-ox,y=layer==='back'?c.y*TH-oy:c.y*TH-oy+TH-f.height;if(f.atlas)g.drawImage(f.im,f.atlas_x,f.atlas_y,f.width,f.height,x,y,f.width,f.height);else g.drawImage(f.im,x,y)}}
- function actor(lib,index,x,y,fallback){let f=sprite(lib,index);if(!f?.ready&&fallback!==undefined)f=sprite(lib,fallback);if(f?.ready)ctx.drawImage(f.im,Math.round(x+f.offsetX),Math.round(y+f.offsetY));return f}
+ function actor(lib,index,x,y,fallback){let f=sprite(lib,index);if((!f?.ready||!f.width||!f.height)&&fallback!==undefined)f=sprite(lib,fallback);if(f?.ready&&f.width&&f.height)ctx.drawImage(f.im,Math.round(x+f.offsetX),Math.round(y+f.offsetY));return f}
  function label(text,x,y,color){ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillStyle=color;ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.fillText(text,x,y);ctx.shadowBlur=0}
  function frameFor(table,motion,dir,seed=0){const moving=motion&&now-motion.start<motion.duration,action=moving?motion.action:'idle',a=table[action]||table.idle;const frame=moving?Math.min(a.count-1,Math.floor((now-motion.start)/motion.duration*a.count)):Math.floor((now+seed*53)/220)%a.count;return {index:a.offset+dir*a.stride+frame,a}}
  const bgStartX=Math.floor(cx/TW)-3,bgStartY=Math.floor(cy/TH)-10,bgW=Math.ceil(viewportWidth/TW)+7,bgH=Math.ceil(viewportHeight/TH)+21;
@@ -256,6 +256,7 @@ function draw(){
   if(e.kind==='npc'){const f=actor(p.library||'npc',p.frame+(p.guard?Math.floor(now/250)%4:0),x,py);label(p.name,x+24,py-65,'#d4f1a6');if(f?.ready)npcHits.push({n:p,x:x+f.offsetX-8,y:py+f.offsetY-18,w:f.width+16,h:f.height+24});return}
   if(e.kind==='monster'||e.kind==='companion'){
    const af=frameFor(monsterAnimations,e.kind==='companion'?companionMotions.get(p.owner_id):monsterMotions.get(p.id),p.dir,p.id),index=(p.base||0)+af.index;
+   for(let frame=0;frame<af.a.count;frame++)sprite(p.library||'Mon1',(p.base||0)+af.a.offset+p.dir*af.a.stride+frame);
    const f=actor(p.library||'Mon1',index,x,py,(p.base||0)+p.dir*monsterAnimations.idle.stride);
    const top=f?.ready?py+f.offsetY-20:py-35;
    if(p.id===attackTarget){ctx.strokeStyle='#edb260';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x+24,py+20,24,12,0,0,Math.PI*2);ctx.stroke()}
@@ -268,6 +269,7 @@ function draw(){
   // stateitem contains paperdoll parts; it is not a world-character helmet library.
   const bodyFrame=actor('Hum',body,x,py,base+p.dir*8);if(p.id!==me.id&&bodyFrame?.ready)playerHits.push({p,x:x+bodyFrame.offsetX-6,y:py+bodyFrame.offsetY-10,w:bodyFrame.width+12,h:bodyFrame.height+20});
   if(p.weapon&&![0,1,7].includes(p.dir))actor('Weapon',weapon,x,py);
+  if(p.magic_shield){const frames=SKILL_FX.magic_shield.sustain;drawMagic(frames[Math.floor(now/100)%frames.length],x,py)}
   label(p.name,x+24,py-55,p.red_name?'#ff4141':'#fff1be');const bubble=chatBubbles.get(p.id);if(bubble&&bubble.until>now)label(bubble.text,x+24,py-80,'#fff5cd');
  }
  for(let y=sy;y<=ey;y++){
@@ -318,6 +320,7 @@ function applyPlayer(p,animate=true){
   const inventoryChanged=JSON.stringify(old?.inventory)!==JSON.stringify(p.inventory);
   const attributesChanged=JSON.stringify(old?.attributes)!==JSON.stringify(p.attributes)||old?.hp!==p.hp||old?.mp!==p.mp;
   me=p;loadRegion();hud();updateMapMusic();
+  syncAutoPotion();
   if(inventoryChanged){if($('inventory-dialog').open)renderBag();if($('npc-dialog').open)renderServices()}
   if($('growth-dialog').open&&growthTab==='attributes'&&(inventoryChanged||attributesChanged))renderGrowth();
  }
@@ -356,11 +359,28 @@ $('attack-btn').onclick=attackNearest;
 const deltas=[[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];
 function canStep(x,y,dir){const [dx,dy]=deltas[dir],walkable=(a,b)=>{const c=mapCache.get(a+','+b);return !!c&&!c.blocked};return walkable(x+dx,y+dy)&&(!dx||!dy||(walkable(x+dx,y)&&walkable(x,y+dy)))}
 function canMelee(from,to){const dx=to.x-from.x,dy=to.y-from.y;if(Math.max(Math.abs(dx),Math.abs(dy))>1)return false;if(!dx&&!dy)return true;const dir=deltas.findIndex(d=>d[0]===dx&&d[1]===dy);return dir>=0&&canStep(from.x,from.y,dir)}
+// Match the server raycast, including blocked diagonal corners and unloaded cells.
+function clearSpellShot(from,to){
+ let x=from.x,y=from.y;const dx=Math.abs(to.x-x),dy=-Math.abs(to.y-y),sx=Math.sign(to.x-x),sy=Math.sign(to.y-y);let err=dx+dy;
+ while(x!==to.x||y!==to.y){const e2=2*err;let nx=x,ny=y;if(e2>=dy){err+=dy;nx+=sx}if(e2<=dx){err+=dx;ny+=sy}const dir=deltas.findIndex(d=>d[0]===nx-x&&d[1]===ny-y);if(dir<0||!canStep(x,y,dir))return false;x=nx;y=ny}return true;
+}
+function retreatDirection(target,reach){
+ const enemies=[...monsters.values()].filter(m=>m.hp>0),queue=[{x:me.x,y:me.y,first:null,depth:0}],seen=new Set([`${me.x},${me.y}`]);
+ // A lateral step may be needed to leave a wall corner before gaining distance.
+ for(let i=0;i<queue.length&&i<400;i++){
+  const p=queue[i],distance=Math.max(Math.abs(p.x-target.x),Math.abs(p.y-target.y));
+  if(p.first!==null&&distance>=3&&distance<=reach&&clearSpellShot(p,target)&&enemies.every(m=>Math.max(Math.abs(p.x-m.x),Math.abs(p.y-m.y))>1))return p.first;
+  if(p.depth>=5)continue;
+  const dirs=deltas.map(([dx,dy],dir)=>({x:p.x+dx,y:p.y+dy,dir})).sort((a,b)=>Math.hypot(b.x-target.x,b.y-target.y)-Math.hypot(a.x-target.x,a.y-target.y));
+  for(const n of dirs){const key=`${n.x},${n.y}`;if(seen.has(key)||!canStep(p.x,p.y,n.dir)||enemies.some(m=>m.x===n.x&&m.y===n.y))continue;seen.add(key);queue.push({...n,first:p.first??n.dir,depth:p.depth+1})}
+ }
+ return null;
+}
 function pathDirection(target,adjacent=false,reach=1){
  const start={x:me.x,y:me.y,first:null},queue=[start],seen=new Set([`${me.x},${me.y}`]);
  for(let i=0;i<queue.length&&i<6000;i++){
   const p=queue[i],distance=Math.max(Math.abs(p.x-target.x),Math.abs(p.y-target.y));
-  if(adjacent?(reach>1?distance<=reach:canMelee(p,target)):distance===0)return p.first;
+  if(adjacent?(reach>1?distance<=reach&&clearSpellShot(p,target):canMelee(p,target)):distance===0)return p.first;
   const order=deltas.map((d,dir)=>({dir,score:Math.hypot(p.x+d[0]-target.x,p.y+d[1]-target.y)})).sort((a,b)=>a.score-b.score);
   for(const {dir}of order){if(!canStep(p.x,p.y,dir))continue;const [dx,dy]=deltas[dir],x=p.x+dx,y=p.y+dy,key=`${x},${y}`;if(seen.has(key))continue;seen.add(key);queue.push({x,y,first:p.first??dir})}
  }
@@ -388,8 +408,10 @@ function inputTick(){
   const dir=pathDirection(d,true);if(dir!==null)requestMove(dir,false);else{pickupTarget=null;status('无法到达掉落物')}return;
  }
  if(attackTarget){const m=monsters.get(attackTarget);if(!m||m.hp<=0){attackTarget=null;updateTarget();return}
-  const skill=autoAttackSkill(),reach=skill?Math.max(1,skill.range):1,inRange=Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=reach&&(reach>1||canMelee(me,m));
+  const skill=autoAttackSkill(),ranged=['wizard','taoist'].includes(me.class)&&(me.skills||[]).some(s=>s.rank>0&&s.kind==='damage'&&s.range>1),reach=skill?Math.max(1,skill.range):1,distance=Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y)),inRange=distance<=reach&&(reach>1?clearSpellShot(me,m):canMelee(me,m));
+  if(ranged&&skill&&reach>2&&distance<=2){const retreat=retreatDirection(m,reach);if(retreat!==null){requestMove(retreat,false);return}}
   if(skill&&inRange&&skillCooldownRemaining(skill.id)===0&&castSkill(skill.id,{target:m,strictTarget:true,autoAttack:true}))return;
+  if(ranged){if(!skill)return;if(inRange)return}
   if(canMelee(me,m)){send('attack',{target_id:m.id});nextInputAt=performance.now()+(me.attack_ms||550)+20;return}
   if(skill&&inRange)return;
   const dir=pathDirection(m,true,reach);if(dir!==null)requestMove(dir,false);else{status('目标暂时无法到达，请换个位置');attackTarget=null;updateTarget()}return;
@@ -542,6 +564,8 @@ $('sfx-btn').addEventListener('click',()=>{if(!sfxEnabled)stopMonsterSounds()});
 $('sfx-volume').addEventListener('input',()=>{if(Number($('sfx-volume').value)<=0)stopMonsterSounds()});
 
 function syncMobileSound(){const b=$('mobile-sound');if(!b)return;const on=musicAllowed||sfxEnabled;b.textContent=on?'声音：开':'声音：关';b.setAttribute('aria-pressed',String(on));b.setAttribute('aria-label',on?'关闭全部游戏声音':'开启游戏声音')}
+function syncAutoPotion(){for(const id of ['auto-potion','mobile-auto-potion']){const b=$(id);if(!b)continue;const on=me?.auto_potion!==false;b.textContent='自动喝药：'+(on?'开':'关');b.setAttribute('aria-pressed',String(on));b.title='战斗中生命低于60%喝红药，魔法低于30%喝蓝药；消耗背包药品'}}
+for(const [id,parent]of [['auto-potion','growth-actions'],['mobile-auto-potion','mobile-utility']]){const b=document.createElement('button');b.type='button';b.id=id;b.onclick=()=>{if(me)send('auto_potion',{ready:me.auto_potion===false})};$(parent).appendChild(b)}syncAutoPotion();
 const mobileSound=document.createElement('button');mobileSound.id='mobile-sound';mobileSound.type='button';$('mobile-quick').appendChild(mobileSound);syncMobileSound();
 mobileSound.onclick=()=>{
  const on=!(musicAllowed||sfxEnabled);musicAllowed=on;sfxEnabled=on;
@@ -729,7 +753,7 @@ function castSkill(id,options={}){
  if(me.mp<sk.mp){status('魔法不足');return false}
  let target=null;
  if(sk.kind==='damage'){
-  const inRange=m=>m&&m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=sk.range;
+  const inRange=m=>m&&m.hp>0&&Math.max(Math.abs(m.x-me.x),Math.abs(m.y-me.y))<=sk.range&&clearSpellShot(me,m);
   const selected=options.target||monsters.get(attackTarget);
   target=inRange(selected)?selected:null;
   if(!target&&!options.strictTarget)target=[...monsters.values()].filter(inRange).sort((a,b)=>Math.hypot(a.x-me.x,a.y-me.y)-Math.hypot(b.x-me.x,b.y-me.y))[0];
@@ -873,7 +897,7 @@ const SKILL_FX={
  ice_storm:{type:'target',frames:SEQ(880,889),scale:1.4},
  fire_sword:{type:'weapon'},
  lion_roar:{type:'self',frames:SEQ(800,805),scale:1.4},
- magic_shield:{type:'self',frames:SEQ(3880,3892),scale:1},
+ magic_shield:{type:'self',frames:SEQ(3880,3892),sustain:SEQ(3890,3892),scale:1},
  ghost_shield:{type:'self',frames:SEQ(1320,1335),scale:1},
  holy_armor:{type:'self',frames:SEQ(1340,1355),scale:1},
  invisibility:{type:'self',frames:SEQ(601,619),scale:1},
@@ -933,7 +957,7 @@ function drawSkillEffects(now,cx,cy){
   }else if(spec.type==='target'){
    const f=spec.frames[Math.min(spec.frames.length-1,Math.floor(t*spec.frames.length))];drawMagic(f,tx,ty,spec.scale||1);
   }else if(spec.type==='self'){
-   const f=spec.frames[Math.min(spec.frames.length-1,Math.floor(t*spec.frames.length))];drawMagic(f,sx,sy,spec.scale||1);
+   const f=spec.frames[Math.min(spec.frames.length-1,Math.floor(t*spec.frames.length))];drawMagic(f,e.kind==='magic_shield'?sx-24:sx,sy,spec.scale||1);
   }else{
    // Unknown weapon overlays are not replaced with synthetic arcs.
   }
