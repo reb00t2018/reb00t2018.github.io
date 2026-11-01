@@ -269,7 +269,7 @@ function draw(){
   // stateitem contains paperdoll parts; it is not a world-character helmet library.
   const bodyFrame=actor('Hum',body,x,py,base+p.dir*8);if(p.id!==me.id&&bodyFrame?.ready)playerHits.push({p,x:x+bodyFrame.offsetX-6,y:py+bodyFrame.offsetY-10,w:bodyFrame.width+12,h:bodyFrame.height+20});
   if(p.weapon&&![0,1,7].includes(p.dir))actor('Weapon',weapon,x,py);
-  if(p.magic_shield){const frames=SKILL_FX.magic_shield.sustain;drawMagic(frames[Math.floor(now/100)%frames.length],x,py)}
+  if(p.magic_shield&&now<(p.shield_until_at||0)){const frames=SKILL_FX.magic_shield.sustain;drawMagic(frames[Math.floor(now/100)%frames.length],x,py)}
   label(p.name,x+24,py-55,p.red_name?'#ff4141':'#fff1be');const bubble=chatBubbles.get(p.id);if(bubble&&bubble.until>now)label(bubble.text,x+24,py-80,'#fff5cd');
  }
  for(let y=sy;y<=ey;y++){
@@ -307,6 +307,7 @@ function receiveTeleport(p){
 }
 function applyPlayer(p,animate=true){
  const old=players.get(p.id),prior=motions.get(p.id),now=performance.now();
+ p.shield_until_at=p.magic_shield?now+Math.max(0,Number(p.magic_shield_ms)||0):0;
  if(!p.companion)companionMotions.delete(p.id);else if(old?.companion&&p.companion.action_seq!==old.companion.action_seq){const from=positionOf(old.companion,companionMotions.get(p.id),now);companionMotions.set(p.id,{x:from.x,y:from.y,start:now,duration:p.companion.duration_ms||450,action:p.companion.action||'idle'})}
  if(animate&&old&&p.action_seq!==old.action_seq){
   const from=positionOf(old,prior,now),action=p.action||'idle';
