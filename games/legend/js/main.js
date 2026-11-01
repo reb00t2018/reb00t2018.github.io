@@ -567,6 +567,12 @@ $('sfx-volume').addEventListener('input',()=>{if(Number($('sfx-volume').value)<=
 function syncMobileSound(){const b=$('mobile-sound');if(!b)return;const on=musicAllowed||sfxEnabled;b.textContent=on?'声音：开':'声音：关';b.setAttribute('aria-pressed',String(on));b.setAttribute('aria-label',on?'关闭全部游戏声音':'开启游戏声音')}
 function syncAutoPotion(){for(const id of ['auto-potion','mobile-auto-potion']){const b=$(id);if(!b)continue;const on=me?.auto_potion!==false;b.textContent='自动喝药：'+(on?'开':'关');b.setAttribute('aria-pressed',String(on));b.title='战斗中生命低于60%喝红药，魔法低于30%喝蓝药；消耗背包药品'}}
 for(const [id,parent]of [['auto-potion','growth-actions'],['mobile-auto-potion','mobile-utility']]){const b=document.createElement('button');b.type='button';b.id=id;b.onclick=()=>{if(me)send('auto_potion',{ready:me.auto_potion===false})};$(parent).appendChild(b)}syncAutoPotion();
+const utilityPanel=$('mobile-utility'),utilityItems=document.createElement('div');utilityItems.id='mobile-utility-items';
+utilityItems.append(...utilityPanel.children);utilityPanel.appendChild(utilityItems);
+const utilityToggle=document.createElement('button');utilityToggle.id='mobile-utility-toggle';utilityToggle.type='button';utilityToggle.setAttribute('aria-controls',utilityItems.id);utilityPanel.appendChild(utilityToggle);
+let utilityCollapsed=localStorage.getItem('legend_mobile_utility_collapsed')!=='false';
+function syncUtilityCollapse(){utilityItems.hidden=utilityCollapsed;utilityToggle.textContent=utilityCollapsed?'辅助操作 ▸':'收起辅助 ▾';utilityToggle.setAttribute('aria-expanded',String(!utilityCollapsed))}
+utilityToggle.onclick=e=>{e.preventDefault();e.stopPropagation();utilityCollapsed=!utilityCollapsed;localStorage.setItem('legend_mobile_utility_collapsed',String(utilityCollapsed));syncUtilityCollapse()};syncUtilityCollapse();
 const mobileSound=document.createElement('button');mobileSound.id='mobile-sound';mobileSound.type='button';$('mobile-quick').appendChild(mobileSound);syncMobileSound();
 mobileSound.onclick=()=>{
  const on=!(musicAllowed||sfxEnabled);musicAllowed=on;sfxEnabled=on;
